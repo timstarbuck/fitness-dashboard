@@ -9,14 +9,233 @@ heart rate (average/max)
 elevation gain
 anything else useful
 
-Lets start with a database schema - assume postgres. 
+Let's add a column to store the full Garmin payload (response) in a jsonb column alongside normalized fields.
 
-Create a plan/schema and save it in the docs folder.
+Then create a the functionality to fetch the data. Below is an example, sync.ts would be driver, called by an api endpoint (should be protected with something in the header or qs). we will start with activities for now, sleep, hrv and bodyBattery will come later.
 
-Reference material:ß
+API Key is stored in the environment in GARMIN_API_KEY
+
+```
+/services/garmin/
+
+token.ts
+activities.ts
+sleep.ts
+hrv.ts
+bodyBattery.ts
+sync.ts
+```
+
+1)
+We need to add startDate and endDate to the api route (src/app/api/sync/garmin/route.ts), src/services/garmin/sync.ts and src/services/garmin/activities.ts. Should default to previous day for startDate and current day for endDate. These should be sent as query string values to the Garmin as outlined below:
+
+startDate
+string($date)
+(query)
+Inclusive earliest activity start date, based on the activity's local start time, in YYYY-MM-DD format.
+
+endDate
+string($date)
+(query)
+Inclusive latest activity start date, based on the activity's local start time, in YYYY-MM-DD format.
+
+2) activity_splits table (db/schema/index.ts) - RESOLVED: Added split fetching and processing in src/services/garmin/sync.ts
+
+Create a bash script at scripts/sync_history.sh. 
+It should run in a loop, fetching data 10 days at a time starting 7/1/2010 through the current date using the below curl command, substituting the dates as needed.
+
+curl "http://localhost:3001/api/sync/garmin?token=$CRON_SECRET&startDate=2026-01-01&endDate=2026-01-02"
+
+Log results in scripts/sync_history_logs
+
+
+✓ Some older activities are missing endTimeGMT. When missing, compute it by adding the duration (which is in seconds) to the startTimeGMT in src/services/garmin/sync.ts
+✓ Some older activities are missing activityName. When missing, use the activityType.typeKey  in src/services/garmin/sync.ts
+✓ Add copilot instructions file for nextjs repo using tailwind, shadcn, drizzle, neon postgres
+
+--------------------------------------
+/hrv-service/hrv/YYYY-MM-DD
+
+{
+  "userProfilePk": 0,
+  "hrvSummary": {
+    "calendarDate": "string",
+    "weeklyAvg": 0,
+    "lastNightAvg": 0,
+    "lastNight5MinHigh": 0,
+    "baseline": {
+      "lowUpper": 0,
+      "balancedLow": 0,
+      "balancedUpper": 0,
+      "markerValue": 0
+    },
+    "status": "NONE",
+    "feedbackPhrase": "NONE",
+    "createTimeStamp": "string"
+  },
+  "hrvReadings": [
+    {
+      "hrvValue": 0,
+      "readingTimeGMT": "string",
+      "readingTimeLocal": "string"
+    }
+  ],
+  "startTimestampGMT": "string",
+  "endTimestampGMT": "string",
+  "startTimestampLocal": "string",
+  "endTimestampLocal": "string",
+  "sleepStartTimestampGMT": "string",
+  "sleepEndTimestampGMT": "string",
+  "sleepStartTimestampLocal": "string",
+  "sleepEndTimestampLocal": "string"
+}
+
+-----------------------------------------
+
+/sleep-service/sleep/dailySleep?date=YYYY-MM-DD
+
+{
+  "id": 0,
+  "userProfilePK": 0,
+  "calendarDate": "string",
+  "sleepTimeSeconds": 0,
+  "napTimeSeconds": 0,
+  "sleepWindowConfirmed": true,
+  "sleepWindowConfirmationType": "string",
+  "sleepStartTimestampGMT": "2026-11-15T19:02:22.021Z",
+  "sleepEndTimestampGMT": "2026-11-15T19:02:22.021Z",
+  "sleepStartTimestampLocal": "2026-11-15T19:02:22.021Z",
+  "sleepEndTimestampLocal": "2026-11-15T19:02:22.021Z",
+  "autoSleepStartTimestampGMT": "2026-11-15T19:02:22.021Z",
+  "autoSleepEndTimestampGMT": "2026-11-15T19:02:22.021Z",
+  "sleepQualityTypePK": "string",
+  "sleepResultTypePK": "string",
+  "unmeasurableSleepSeconds": 0,
+  "deepSleepSeconds": 0,
+  "lightSleepSeconds": 0,
+  "remSleepSeconds": 0,
+  "awakeSleepSeconds": 0,
+  "deviceRemCapable": true,
+  "sleepFromDevice": true,
+  "averageSpO2Value": 0,
+  "lowestSpO2Value": 0,
+  "highestSpO2Value": 0,
+  "numberOfEventsBelowThreshold": 0,
+  "averageSpO2HRSleep": 0,
+  "spo2Threshold": 0,
+  "averageRespirationValue": 0,
+  "lowestRespirationValue": 0,
+  "highestRespirationValue": 0,
+  "awakeCount": 0,
+  "avgSleepStress": 0,
+  "ageGroup": "TEEN",
+  "avgHeartRate": 0,
+  "sleepScoreFeedback": "NONE",
+  "sleepScoreInsight": "NONE",
+  "sleepScorePersonalizedInsight": "NOT_AVAILABLE",
+  "sleepScores": {
+    "additionalProp1": {
+      "value": 0,
+      "qualifierKey": "string",
+      "optimalStart": 0,
+      "optimalEnd": 0,
+      "idealStartInSeconds": 0,
+      "idealEndInSeconds": 0
+    },
+    "additionalProp2": {
+      "value": 0,
+      "qualifierKey": "string",
+      "optimalStart": 0,
+      "optimalEnd": 0,
+      "idealStartInSeconds": 0,
+      "idealEndInSeconds": 0
+    },
+    "additionalProp3": {
+      "value": 0,
+      "qualifierKey": "string",
+      "optimalStart": 0,
+      "optimalEnd": 0,
+      "idealStartInSeconds": 0,
+      "idealEndInSeconds": 0
+    }
+  },
+  "userNote": "string",
+  "kidSleepNote": "string",
+  "sleepVersion": 0,
+  "sleepNeed": {
+    "userProfilePk": 0,
+    "calendarDate": "2026-11-15",
+    "deviceId": 0,
+    "timestampGmt": "2026-11-15T19:02:22.021Z",
+    "baseline": 0,
+    "actual": 0,
+    "feedback": "string",
+    "trainingFeedback": "string",
+    "sleepHistoryAdjustment": "string",
+    "hrvAdjustment": "string",
+    "napAdjustment": "string",
+    "displayedForTheDay": true,
+    "recommendedBedtimeStartMins": 0,
+    "recommendedBedtimeEndMins": 0,
+    "preferredActivityTracker": true
+  },
+  "nextSleepNeed": {
+    "userProfilePk": 0,
+    "calendarDate": "2026-11-15",
+    "deviceId": 0,
+    "timestampGmt": "2026-11-15T19:02:22.021Z",
+    "baseline": 0,
+    "actual": 0,
+    "feedback": "string",
+    "trainingFeedback": "string",
+    "sleepHistoryAdjustment": "string",
+    "hrvAdjustment": "string",
+    "napAdjustment": "string",
+    "displayedForTheDay": true,
+    "recommendedBedtimeStartMins": 0,
+    "recommendedBedtimeEndMins": 0,
+    "preferredActivityTracker": true
+  },
+  "dailyNapDTOS": [
+    {
+      "userProfilePK": 0,
+      "deviceId": 0,
+      "calendarDate": "2026-11-15",
+      "napTimeSec": 0,
+      "napStartTimestampGMT": "2026-11-15T19:02:22.021Z",
+      "napEndTimestampGMT": "2026-11-15T19:02:22.021Z",
+      "napFeedback": "string",
+      "napSource": 0,
+      "napStartTimeOffset": 0,
+      "napEndTimeOffset": 0,
+      "createTimestampGMT": "2026-11-15T19:02:22.021Z",
+      "updateTimestampGMT": "2026-11-15T19:02:22.021Z"
+    }
+  ],
+  "breathingDisruptionSeverity": "string",
+  "sleepAlignment": {
+    "userId": 0,
+    "calendarDate": "2026-11-15",
+    "deviceId": 0,
+    "isPreferredActivityTracker": true,
+    "sleepNeedBaselineMins": 0,
+    "optimalSleepWindowStartMins": 0,
+    "optimalSleepWindowEndMins": 0,
+    "status": "string",
+    "optimalSleepWindowMidpointMins": 0,
+    "lastSleepMidpointMins": 0
+  }
+}
+
+--------------------------------------------------------------------
+
+Reference material:
 
 Swagger Docs Page
 https://developer.garmin.com/gc-developer-program/personal/swagger-docs/
+
+Example fetching token 
+curl -X POST 'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token' -H 'Authorization: ApiKey xxxxx'
 
 https://personal.connectapi.garmin.com
 
