@@ -37,6 +37,7 @@ Stores the core activity data fetched from Garmin.
 | `owner_id` | VARCHAR(255) | Garmin user ID/Display name. |
 | `is_favorite` | BOOLEAN | Whether the activity is marked as favorite. |
 | `is_pr` | BOOLEAN | Whether it's a Personal Record. |
+| `raw_payload` | JSONB | The full Garmin activity payload. |
 
 ### `activity_splits` Table
 Stores split-level data for detailed analysis (e.g., pace per km).
@@ -48,6 +49,15 @@ Stores split-level data for detailed analysis (e.g., pace per km).
 | `distance` | DOUBLE PRECISION | Distance for this split. |
 | `duration_seconds` | INTEGER | Duration for this split. |
 | `avg_speed` | DOUBLE PRECISION | Average speed for this split. |
+
+### `sync_locks` Table
+Named locks ensuring only one instance of a sync process runs at a time (works across serverless function instances). Stale locks expire via `expires_at` and can be re-claimed.
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `name` | VARCHAR(100) (PK) | Lock name, e.g. `garmin-activities`. One row per lock. |
+| `lock_token` | UUID | Unique token for the current holder; only the holder can release it. |
+| `locked_at` | TIMESTAMPTZ | When the lock was (re-)claimed. |
+| `expires_at` | TIMESTAMPTZ | When the lock becomes stale and can be re-claimed (locked_at + 10 min). |
 
 ## Implementation Roadmap
 1. **Phase 1: Data Ingestion**

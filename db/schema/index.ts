@@ -1,5 +1,5 @@
-import { pgTable, uuid, bigint, varchar, timestamp, doublePrecision, integer, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { pgTable, uuid, bigint, varchar, timestamp, doublePrecision, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const activities = pgTable("activities", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -21,6 +21,7 @@ export const activities = pgTable("activities", {
   ownerId: varchar("owner_id", { length: 255 }).notNull(),
   isFavorite: boolean("is_favorite").default(false),
   isPr: boolean("is_pr").default(false),
+  rawPayload: jsonb("raw_payload"),
 });
 
 export const activitySplits = pgTable("activity_splits", {
@@ -30,4 +31,15 @@ export const activitySplits = pgTable("activity_splits", {
   distance: doublePrecision("distance").notNull(),
   durationSeconds: integer("duration_seconds").notNull(),
   avgSpeed: doublePrecision("avg_speed"),
+});
+
+// Named locks used to ensure only one instance of a sync process runs at a time.
+// Works across serverless function instances (unlike in-memory flags) because the
+// state lives in the database. Stale locks (crashed/timed-out functions) expire
+// via expires_at and can be re-claimed.
+export const syncLocks = pgTable("sync_locks", {
+  name: varchar("name", { length: 100 }).primaryKey(),
+  lockToken: uuid("lock_token").notNull().default(sql`gen_random_uuid()`),
+  lockedAt: timestamp("locked_at", { withTimezone: true }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
