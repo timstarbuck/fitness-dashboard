@@ -1,0 +1,477 @@
+{
+  "id": "b5e28955-0980-4618-9c2a-df336cef3a05",
+  "prevId": "bfab1dff-ef98-4928-9bfc-7257c572e240",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.activities": {
+      "name": "activities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "garmin_activity_id": {
+          "name": "garmin_activity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activity_name": {
+          "name": "activity_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activity_type": {
+          "name": "activity_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time_local": {
+          "name": "start_time_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time_gmt": {
+          "name": "start_time_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time_gmt": {
+          "name": "end_time_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance": {
+          "name": "distance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "elevation_gain": {
+          "name": "elevation_gain",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "elevation_loss": {
+          "name": "elevation_loss",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_heart_rate": {
+          "name": "avg_heart_rate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_heart_rate": {
+          "name": "max_heart_rate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calories": {
+          "name": "calories",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_speed": {
+          "name": "avg_speed",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_speed": {
+          "name": "max_speed",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_favorite": {
+          "name": "is_favorite",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "is_pr": {
+          "name": "is_pr",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "raw_payload": {
+          "name": "raw_payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "activities_garmin_activity_id_unique": {
+          "name": "activities_garmin_activity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "garmin_activity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_splits": {
+      "name": "activity_splits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "split_number": {
+          "name": "split_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance": {
+          "name": "distance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avg_speed": {
+          "name": "avg_speed",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_splits_activity_id_activities_id_fk": {
+          "name": "activity_splits_activity_id_activities_id_fk",
+          "tableFrom": "activity_splits",
+          "tableTo": "activities",
+          "columnsFrom": [
+            "activity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hrv_data": {
+      "name": "hrv_data",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "calendar_date": {
+          "name": "calendar_date",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekly_avg": {
+          "name": "weekly_avg",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_night_avg": {
+          "name": "last_night_avg",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_night_5min_high": {
+          "name": "last_night_5min_high",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_low_upper": {
+          "name": "baseline_low_upper",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_balanced_low": {
+          "name": "baseline_balanced_low",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_balanced_upper": {
+          "name": "baseline_balanced_upper",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_marker_value": {
+          "name": "baseline_marker_value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feedback_phrase": {
+          "name": "feedback_phrase",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "create_timestamp": {
+          "name": "create_timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_timestamp_gmt": {
+          "name": "start_timestamp_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_timestamp_gmt": {
+          "name": "end_timestamp_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_timestamp_local": {
+          "name": "start_timestamp_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_timestamp_local": {
+          "name": "end_timestamp_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sleep_start_timestamp_gmt": {
+          "name": "sleep_start_timestamp_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sleep_end_timestamp_gmt": {
+          "name": "sleep_end_timestamp_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sleep_start_timestamp_local": {
+          "name": "sleep_start_timestamp_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sleep_end_timestamp_local": {
+          "name": "sleep_end_timestamp_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_payload": {
+          "name": "raw_payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "hrv_data_calendar_date_unique": {
+          "name": "hrv_data_calendar_date_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "calendar_date"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hrv_readings": {
+      "name": "hrv_readings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "hrv_data_id": {
+          "name": "hrv_data_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hrv_value": {
+          "name": "hrv_value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reading_time_gmt": {
+          "name": "reading_time_gmt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reading_time_local": {
+          "name": "reading_time_local",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "hrv_readings_hrv_data_id_hrv_data_id_fk": {
+          "name": "hrv_readings_hrv_data_id_hrv_data_id_fk",
+          "tableFrom": "hrv_readings",
+          "tableTo": "hrv_data",
+          "columnsFrom": [
+            "hrv_data_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sync_locks": {
+      "name": "sync_locks",
+      "schema": "",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "lock_token": {
+          "name": "lock_token",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "locked_at": {
+          "name": "locked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

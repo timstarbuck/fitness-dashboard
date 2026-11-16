@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { syncGarminActivities, type SyncOptions } from '@/services/garmin/sync';
+import { syncGarminActivities, syncGarminHRV, type SyncOptions } from '@/services/garmin/sync';
 import { acquireSyncLock, releaseSyncLock } from '@/services/garmin/syncLock';
 
 // Lock name for this sync process. Must be unique per sync type so that
@@ -45,6 +45,7 @@ function parseDateRange(
 ): { options?: SyncOptions; error?: NextResponse } {
   const startDate = request.nextUrl.searchParams.get('startDate') ?? undefined;
   const endDate = request.nextUrl.searchParams.get('endDate') ?? undefined;
+  const syncHRV = request.nextUrl.searchParams.get('syncHRV') === 'true';
 
   for (const [name, value] of Object.entries({ startDate, endDate })) {
     if (value !== undefined && !isValidCalendarDate(value)) {
@@ -66,7 +67,7 @@ function parseDateRange(
     };
   }
 
-  return { options: { startDate, endDate } };
+  return { options: { startDate, endDate, syncHRV } };
 }
 
 async function handleSync(request: NextRequest): Promise<NextResponse> {
@@ -110,12 +111,27 @@ async function handleSync(request: NextRequest): Promise<NextResponse> {
 
   try {
     console.log('API: Starting Garmin sync via route handler...');
-    const result = await syncGarminActivities(options);
+    
+    const results = [];
+    const syncOptions: SyncOptions = options || {};
+    
+    // Sync activities
+    if (!syncOptions.syncHRV) {
+      const activityResult = await syncGarminActivities(syncOptions);
+      results.push({ type: 'activities', ...activityResult });
+    }
+    
+    // Sync HRV data
+    if (syncOptions.syncHRV) {
+      const hrvResult = await syncGarminHRV(syncOptions);
+      results.push({ type: 'hrv', ...hrvResult });
+    }
+    
     console.log('API: Garmin sync completed.');
 
     return NextResponse.json({
       message: 'Sync completed successfully',
-      ...result,
+      results,
     });
   } catch (error) {
     console.error('API: Sync failed:', error);

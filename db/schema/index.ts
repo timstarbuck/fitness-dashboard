@@ -43,3 +43,38 @@ export const syncLocks = pgTable("sync_locks", {
   lockedAt: timestamp("locked_at", { withTimezone: true }).notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
+
+// HRV (Heart Rate Variability) data from Garmin
+export const hrvData = pgTable("hrv_data", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  calendarDate: varchar("calendar_date", { length: 10 }).notNull().unique(), // YYYY-MM-DD
+  weeklyAvg: doublePrecision("weekly_avg"),
+  lastNightAvg: doublePrecision("last_night_avg"),
+  lastNight5MinHigh: doublePrecision("last_night_5min_high"),
+  baselineLowUpper: doublePrecision("baseline_low_upper"),
+  baselineBalancedLow: doublePrecision("baseline_balanced_low"),
+  baselineBalancedUpper: doublePrecision("baseline_balanced_upper"),
+  baselineMarkerValue: doublePrecision("baseline_marker_value"),
+  status: varchar("status", { length: 50 }),
+  feedbackPhrase: varchar("feedback_phrase", { length: 255 }),
+  createTimeStamp: timestamp("create_timestamp"),
+  startTimestampGMT: timestamp("start_timestamp_gmt"),
+  endTimestampGMT: timestamp("end_timestamp_gmt"),
+  startTimestampLocal: timestamp("start_timestamp_local"),
+  endTimestampLocal: timestamp("end_timestamp_local"),
+  sleepStartTimestampGMT: timestamp("sleep_start_timestamp_gmt"),
+  sleepEndTimestampGMT: timestamp("sleep_end_timestamp_gmt"),
+  sleepStartTimestampLocal: timestamp("sleep_start_timestamp_local"),
+  sleepEndTimestampLocal: timestamp("sleep_end_timestamp_local"),
+  ownerId: varchar("owner_id", { length: 255 }).notNull(),
+  rawPayload: jsonb("raw_payload"),
+});
+
+// HRV readings for each night
+export const hrvReadings = pgTable("hrv_readings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  hrvDataId: uuid("hrv_data_id").references(() => hrvData.id, { onDelete: "cascade" }).notNull(),
+  hrvValue: doublePrecision("hrv_value").notNull(),
+  readingTimeGMT: timestamp("reading_time_gmt").notNull(),
+  readingTimeLocal: timestamp("reading_time_local"),
+});
