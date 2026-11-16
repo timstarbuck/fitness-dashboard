@@ -42,3 +42,5 @@ next-env.d.ts
 
 # exlude all .log files
 *.log
+
+z_temp
