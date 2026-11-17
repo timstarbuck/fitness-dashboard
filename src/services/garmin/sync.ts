@@ -1,8 +1,9 @@
 import { getGarminToken } from './token';
 import { fetchGarminActivities, fetchGarminActivityDetails, type ActivityDateRange } from './activities';
 import { fetchGarminHRV, parseGarminDate, parseGarminDateOrUndefined, type GarminHRVResponse } from './hrv';
+import { fetchGarminSleep, type GarminSleepResponse } from './sleep';
 import { db } from '../../../db';
-import { activities, activitySplits, hrvData, hrvReadings } from '../../../db/schema'
+import { activities, activitySplits, hrvData, hrvReadings, sleepData } from '../../../db/schema'
 
 export interface SyncResult {
   fetched: number;
@@ -14,8 +15,14 @@ export interface HRVSyncResult {
   synced: number;
 }
 
+export interface SleepSyncResult {
+  fetched: number;
+  synced: number;
+}
+
 export type SyncOptions = ActivityDateRange & {
   syncHRV?: boolean;
+  syncSleep?: boolean;
 };
 
 const RETRY_DELAY_DEFAULT = 60;
@@ -69,6 +76,192 @@ export function getRetryDelayFromError(error: unknown): number | null {
 // Helper function to wait for a specified time
 export async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function syncGarminSleep(options: SyncOptions = {}): Promise<SleepSyncResult> {
+  const range = resolveDateRange(options);
+
+  console.log(
+    `Starting Garmin sleep sync (startDate=${range.startDate}, endDate=${range.endDate})...`
+  );
+
+  let token: string;
+  try {
+    token = await getGarminToken();
+  } catch (error) {
+    const retryDelay = getRetryDelayFromError(error);
+    if (retryDelay) {
+      console.log(`Rate limit hit. Waiting ${retryDelay} seconds before retrying...`);
+      await delay(RETRY_DELAY_DEFAULT * 1000);
+      token = await getGarminToken();
+    } else {
+      console.error(`Error occurred while getting Garmin token:`, error);
+      throw error;
+    }
+  }
+
+  let synced = 0;
+  let fetched = 0;
+
+  // Sync sleep data for each day in the range
+  let currentDate = new Date(range.startDate as string);
+  const endDate = new Date(range.endDate as string);
+
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    
+    try {
+      let sleepDataResponse: GarminSleepResponse;
+      try {
+        sleepDataResponse = await fetchGarminSleep(token, dateStr);
+      } catch (error) {
+        const retryDelay = getRetryDelayFromError(error);
+        if (retryDelay) {
+          console.log(`Rate limit hit while fetching sleep data. Waiting ${retryDelay} seconds before retrying...`);
+          await delay(RETRY_DELAY_DEFAULT * 1000);
+          sleepDataResponse = await fetchGarminSleep(token, dateStr);
+        } else {
+          // Sleep data might not be available for all days, skip if not found
+          // or if the response is empty/invalid
+          if (error instanceof Error && 
+              (error.message.includes('404') || 
+               error.message.includes('Empty response') ||
+               error.message.includes('Invalid JSON'))) {
+            console.log(`No sleep data available for ${dateStr}: ${error.message}`);
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      fetched++;
+
+      // Parse timestamps from the response
+      const sleepStartTimestampGMT = parseGarminDateOrUndefined(sleepDataResponse.sleepStartTimestampGMT);
+      const sleepEndTimestampGMT = parseGarminDateOrUndefined(sleepDataResponse.sleepEndTimestampGMT);
+      const sleepStartTimestampLocal = parseGarminDateOrUndefined(sleepDataResponse.sleepStartTimestampLocal);
+      const sleepEndTimestampLocal = parseGarminDateOrUndefined(sleepDataResponse.sleepEndTimestampLocal);
+      const autoSleepStartTimestampGMT = parseGarminDateOrUndefined(sleepDataResponse.autoSleepStartTimestampGMT);
+      const autoSleepEndTimestampGMT = parseGarminDateOrUndefined(sleepDataResponse.autoSleepEndTimestampGMT);
+
+      // Insert or update sleep data
+      // Use the requested date if calendarDate is null in the response
+      const calendarDate = sleepDataResponse.calendarDate || dateStr;
+      
+      // Skip if calendarDate is still null (shouldn't happen with the fallback)
+      if (!calendarDate) {
+        console.log(`Skipping sleep data for ${dateStr}: no calendar date available`);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        continue;
+      }
+      
+      await db
+        .insert(sleepData)
+        .values({
+          calendarDate: calendarDate,
+          sleepTimeSeconds: sleepDataResponse.sleepTimeSeconds,
+          napTimeSeconds: sleepDataResponse.napTimeSeconds,
+          sleepWindowConfirmed: sleepDataResponse.sleepWindowConfirmed,
+          sleepWindowConfirmationType: sleepDataResponse.sleepWindowConfirmationType,
+          sleepStartTimestampGMT: sleepStartTimestampGMT,
+          sleepEndTimestampGMT: sleepEndTimestampGMT,
+          sleepStartTimestampLocal: sleepStartTimestampLocal,
+          sleepEndTimestampLocal: sleepEndTimestampLocal,
+          autoSleepStartTimestampGMT: autoSleepStartTimestampGMT,
+          autoSleepEndTimestampGMT: autoSleepEndTimestampGMT,
+          sleepQualityTypePK: sleepDataResponse.sleepQualityTypePK,
+          sleepResultTypePK: sleepDataResponse.sleepResultTypePK,
+          unmeasurableSleepSeconds: sleepDataResponse.unmeasurableSleepSeconds,
+          deepSleepSeconds: sleepDataResponse.deepSleepSeconds,
+          lightSleepSeconds: sleepDataResponse.lightSleepSeconds,
+          remSleepSeconds: sleepDataResponse.remSleepSeconds,
+          awakeSleepSeconds: sleepDataResponse.awakeSleepSeconds,
+          deviceRemCapable: sleepDataResponse.deviceRemCapable,
+          sleepFromDevice: sleepDataResponse.sleepFromDevice,
+          averageSpO2Value: sleepDataResponse.averageSpO2Value,
+          lowestSpO2Value: sleepDataResponse.lowestSpO2Value,
+          highestSpO2Value: sleepDataResponse.highestSpO2Value,
+          numberOfEventsBelowThreshold: sleepDataResponse.numberOfEventsBelowThreshold,
+          averageSpO2HRSleep: sleepDataResponse.averageSpO2HRSleep,
+          spo2Threshold: sleepDataResponse.spo2Threshold,
+          averageRespirationValue: sleepDataResponse.averageRespirationValue,
+          lowestRespirationValue: sleepDataResponse.lowestRespirationValue,
+          highestRespirationValue: sleepDataResponse.highestRespirationValue,
+          awakeCount: sleepDataResponse.awakeCount,
+          avgSleepStress: sleepDataResponse.avgSleepStress,
+          ageGroup: sleepDataResponse.ageGroup,
+          avgHeartRate: sleepDataResponse.avgHeartRate,
+          sleepScoreFeedback: sleepDataResponse.sleepScoreFeedback,
+          sleepScoreInsight: sleepDataResponse.sleepScoreInsight,
+          sleepScorePersonalizedInsight: sleepDataResponse.sleepScorePersonalizedInsight,
+          userNote: sleepDataResponse.userNote,
+          kidSleepNote: sleepDataResponse.kidSleepNote,
+          sleepVersion: sleepDataResponse.sleepVersion,
+          breathingDisruptionSeverity: sleepDataResponse.breathingDisruptionSeverity,
+          ownerId: 'system', // Placeholder for actual user ID logic
+          rawPayload: sleepDataResponse,
+        })
+        .onConflictDoUpdate({
+          target: sleepData.calendarDate,
+          set: {
+            calendarDate: calendarDate,
+            sleepTimeSeconds: sleepDataResponse.sleepTimeSeconds,
+            napTimeSeconds: sleepDataResponse.napTimeSeconds,
+            sleepWindowConfirmed: sleepDataResponse.sleepWindowConfirmed,
+            sleepWindowConfirmationType: sleepDataResponse.sleepWindowConfirmationType,
+            sleepStartTimestampGMT: sleepStartTimestampGMT,
+            sleepEndTimestampGMT: sleepEndTimestampGMT,
+            sleepStartTimestampLocal: sleepStartTimestampLocal,
+            sleepEndTimestampLocal: sleepEndTimestampLocal,
+            autoSleepStartTimestampGMT: autoSleepStartTimestampGMT,
+            autoSleepEndTimestampGMT: autoSleepEndTimestampGMT,
+            sleepQualityTypePK: sleepDataResponse.sleepQualityTypePK,
+            sleepResultTypePK: sleepDataResponse.sleepResultTypePK,
+            unmeasurableSleepSeconds: sleepDataResponse.unmeasurableSleepSeconds,
+            deepSleepSeconds: sleepDataResponse.deepSleepSeconds,
+            lightSleepSeconds: sleepDataResponse.lightSleepSeconds,
+            remSleepSeconds: sleepDataResponse.remSleepSeconds,
+            awakeSleepSeconds: sleepDataResponse.awakeSleepSeconds,
+            deviceRemCapable: sleepDataResponse.deviceRemCapable,
+            sleepFromDevice: sleepDataResponse.sleepFromDevice,
+            averageSpO2Value: sleepDataResponse.averageSpO2Value,
+            lowestSpO2Value: sleepDataResponse.lowestSpO2Value,
+            highestSpO2Value: sleepDataResponse.highestSpO2Value,
+            numberOfEventsBelowThreshold: sleepDataResponse.numberOfEventsBelowThreshold,
+            averageSpO2HRSleep: sleepDataResponse.averageSpO2HRSleep,
+            spo2Threshold: sleepDataResponse.spo2Threshold,
+            averageRespirationValue: sleepDataResponse.averageRespirationValue,
+            lowestRespirationValue: sleepDataResponse.lowestRespirationValue,
+            highestRespirationValue: sleepDataResponse.highestRespirationValue,
+            awakeCount: sleepDataResponse.awakeCount,
+            avgSleepStress: sleepDataResponse.avgSleepStress,
+            ageGroup: sleepDataResponse.ageGroup,
+            avgHeartRate: sleepDataResponse.avgHeartRate,
+            sleepScoreFeedback: sleepDataResponse.sleepScoreFeedback,
+            sleepScoreInsight: sleepDataResponse.sleepScoreInsight,
+            sleepScorePersonalizedInsight: sleepDataResponse.sleepScorePersonalizedInsight,
+            userNote: sleepDataResponse.userNote,
+            kidSleepNote: sleepDataResponse.kidSleepNote,
+            sleepVersion: sleepDataResponse.sleepVersion,
+            breathingDisruptionSeverity: sleepDataResponse.breathingDisruptionSeverity,
+            ownerId: 'system',
+            rawPayload: sleepDataResponse,
+          },
+        });
+
+      synced++;
+      console.log(`Synced sleep data for ${dateStr}`);
+    } catch (err) {
+      console.error(`Failed to sync sleep data for ${dateStr}:`, err);
+    }
+
+    // Move to the next day
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
+
+  console.log('Garmin sleep sync completed.');
+  return { fetched, synced };
 }
 
 export async function syncGarminHRV(options: SyncOptions = {}): Promise<HRVSyncResult> {

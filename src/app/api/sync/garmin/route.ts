@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { syncGarminActivities, syncGarminHRV, type SyncOptions } from '@/services/garmin/sync';
+import { syncGarminActivities, syncGarminHRV, syncGarminSleep, type SyncOptions } from '@/services/garmin/sync';
 import { acquireSyncLock, releaseSyncLock } from '@/services/garmin/syncLock';
 
 // Lock name for this sync process. Must be unique per sync type so that
@@ -46,6 +46,7 @@ function parseDateRange(
   const startDate = request.nextUrl.searchParams.get('startDate') ?? undefined;
   const endDate = request.nextUrl.searchParams.get('endDate') ?? undefined;
   const syncHRV = request.nextUrl.searchParams.get('syncHRV') === 'true';
+  const syncSleep = request.nextUrl.searchParams.get('syncSleep') === 'true';
 
   for (const [name, value] of Object.entries({ startDate, endDate })) {
     if (value !== undefined && !isValidCalendarDate(value)) {
@@ -67,7 +68,7 @@ function parseDateRange(
     };
   }
 
-  return { options: { startDate, endDate, syncHRV } };
+  return { options: { startDate, endDate, syncHRV, syncSleep } };
 }
 
 async function handleSync(request: NextRequest): Promise<NextResponse> {
@@ -116,7 +117,7 @@ async function handleSync(request: NextRequest): Promise<NextResponse> {
     const syncOptions: SyncOptions = options || {};
     
     // Sync activities
-    if (!syncOptions.syncHRV) {
+    if (!syncOptions.syncHRV && !syncOptions.syncSleep) {
       const activityResult = await syncGarminActivities(syncOptions);
       results.push({ type: 'activities', ...activityResult });
     }
@@ -127,7 +128,13 @@ async function handleSync(request: NextRequest): Promise<NextResponse> {
       results.push({ type: 'hrv', ...hrvResult });
     }
     
-    console.log('API: Garmin sync completed.');
+    // Sync sleep data
+    if (syncOptions.syncSleep) {
+      const sleepResult = await syncGarminSleep(syncOptions);
+      results.push({ type: 'sleep', ...sleepResult });
+    }
+    
+    console.log('API: Garmin sync completed.')
 
     return NextResponse.json({
       message: 'Sync completed successfully',

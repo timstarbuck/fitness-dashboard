@@ -54,8 +54,19 @@ Log results in scripts/sync_history_logs
 ✓ Add copilot instructions file for nextjs repo using tailwind, shadcn, drizzle, neon postgres
 
 --------------------------------------
-/hrv-service/hrv/YYYY-MM-DD
+Goal - add HRV data to database and sync.
 
+Add database table(s) db/schema/index.ts
+fetch function (src/services/garmin/hrv.ts) and incorporate into src/services/garmin/sync.ts
+Add a hrv_history_sync.sh script scripts
+
+
+Fetch Method:
+`/hrv-service/hrv/YYYY-MM-DD`
+
+
+Fetch response from Garmin Docs
+```json
 {
   "userProfilePk": 0,
   "hrvSummary": {
@@ -89,11 +100,21 @@ Log results in scripts/sync_history_logs
   "sleepStartTimestampLocal": "string",
   "sleepEndTimestampLocal": "string"
 }
+```
 
 -----------------------------------------
+Goal - add sleep data to database and sync.
+We want to be able to sync the sleep data indepently as well as with the normal sync process.
 
-/sleep-service/sleep/dailySleep?date=YYYY-MM-DD
+Add database table(s) db/schema/index.ts
+fetch function (src/services/garmin/sleep.ts) and incorporate into src/services/garmin/sync.ts
+Add a sleep_history_sync.sh script scripts
 
+Fetch Method:
+`/sleep-service/sleep/dailySleep?date=YYYY-MM-DD`
+
+Sample response from garmin docs
+```json
 {
   "id": 0,
   "userProfilePK": 0,
@@ -226,7 +247,7 @@ Log results in scripts/sync_history_logs
     "lastSleepMidpointMins": 0
   }
 }
-
+```
 --------------------------------------------------------------------
 
 Reference material:
@@ -629,3 +650,16 @@ Sample response
 ]
 No links
 400	
+
+
+---------------------
+
+setup unit testing
+src/app/api/sync/garmin/route.ts
+src/services/garmin/activities.ts
+src/services/garmin/hrv.ts
+src/services/garmin/sleep.ts
+src/services/garmin/sync.ts
+src/services/garmin/syncLock.ts
+src/services/garmin/token.ts
+
