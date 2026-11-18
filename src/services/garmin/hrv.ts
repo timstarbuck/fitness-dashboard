@@ -61,12 +61,8 @@ export async function fetchGarminHRV(
       throw new Error('Empty response from Garmin API');
     }
 
-    try {
-      const jsonData = JSON.parse(responseText);
-      return jsonData as GarminHRVResponse;
-    } catch (parseError) {
-      throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
-    }
+    const jsonData = JSON.parse(responseText);
+    return jsonData as GarminHRVResponse;
   } catch (error) {
     console.error(`Error fetching HRV data for ${date}:`, error);
     throw new Error(

@@ -104,7 +104,7 @@ export async function syncGarminSleep(options: SyncOptions = {}): Promise<SleepS
   let fetched = 0;
 
   // Sync sleep data for each day in the range
-  let currentDate = new Date(range.startDate as string);
+  const currentDate = new Date(range.startDate as string);
   const endDate = new Date(range.endDate as string);
 
   while (currentDate <= endDate) {
@@ -290,7 +290,7 @@ export async function syncGarminHRV(options: SyncOptions = {}): Promise<HRVSyncR
   let fetched = 0;
 
   // Sync HRV data for each day in the range
-  let currentDate = new Date(range.startDate as string);
+  const currentDate = new Date(range.startDate as string);
   const endDate = new Date(range.endDate as string);
 
   while (currentDate <= endDate) {
@@ -439,8 +439,7 @@ export async function syncGarminActivities(options: SyncOptions = {}): Promise<S
     const retryDelay = getRetryDelayFromError(error);
     if (retryDelay) {
       console.log(`Rate limit hit. Waiting ${retryDelay} seconds before retrying...`);
-      //await delay(retryDelay * 1000);
-      await delay(RETRY_DELAY_DEFAULT * 1000);
+      await delay(retryDelay * 1000);
       token = await getGarminToken();
     } else {
       console.error(`Error occurred while getting Garmin token:`, error);

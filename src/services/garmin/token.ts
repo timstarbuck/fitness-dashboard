@@ -26,14 +26,9 @@ export async function getGarminToken(): Promise<string> {
       
       // Handle rate limit errors (429)
       if (response.status === 429) {
-        try {
-          const errorData = JSON.parse(errorText);
-          const retryInSeconds = errorData.retryInSeconds || 30;
-          throw new Error(`Rate limit exceeded! Retry in ${retryInSeconds} seconds - ${errorText}`);
-        } catch (parseError) {
-          // If we can't parse the error, still throw with the raw text
-          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-        }
+        const errorData = JSON.parse(errorText);
+        const retryInSeconds = errorData.retryInSeconds || 30;
+        throw new Error(`Rate limit exceeded! Retry in ${retryInSeconds} seconds - ${errorText}`);
       }
       
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
