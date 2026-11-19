@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --forest: #166534;
+  --pine: #14532d;
+  --sand: #d6d3d1;
+  --stone: #44403c;
+  --orange: #f97316;
 }
 
 @theme inline {
