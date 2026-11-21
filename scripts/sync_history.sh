@@ -4,7 +4,7 @@
 mkdir -p scripts/sync_history_logs
 
 # Set the start date and current date
-start_date="2010-07-01"
+start_date="2026-11-01"
 current_date=$(date +%Y-%m-%d)
 
 # Function to add days to a date (macOS compatible)
@@ -28,7 +28,7 @@ fetch_data() {
     local end=$2
     echo "Fetching data from $start to $end..."
     
-    curl -s "http://localhost:3001/api/sync/garmin?token=$CRON_SECRET&startDate=$start&endDate=$end" >> "$log_file" 2>&1
+    curl -s "http://localhost:3000/api/sync/garmin?token=$CRON_SECRET&startDate=$start&endDate=$end" >> "$log_file" 2>&1
     
     if [ $? -eq 0 ]; then
         echo "Successfully fetched data from $start to $end" >> "$log_file"

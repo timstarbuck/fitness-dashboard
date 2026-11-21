@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Summit",
-    short_name: "Summit",
+    name: "Fitness/Health Overview",
+    short_name: "Fitness",
     description: "Personal Fitness/Health Dashboard",
     start_url: "/",
     display: "standalone",
