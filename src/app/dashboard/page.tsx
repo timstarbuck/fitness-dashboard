@@ -4,20 +4,12 @@ import { connection } from "next/server";
 import { KpiCard } from "../../components/dashboard/kpi-card";
 import { ReadinessIndicator } from "../../components/dashboard/readiness-indicator";
 import { TrainingLoadChart } from "../../components/dashboard/training-load-chart";
-import {
-  type DateRange,
-  addDays,
-  calendarDateKey,
-  computeReadiness,
-  dailyDistanceSeries,
-  formatDuration,
-  getActivitiesSince,
-  getHrvSince,
-  getLatestHrv,
-  getLatestSleep,
-  getSleepSince,
-  rangeStartDate,
-} from "../../lib/fitness-data";
+import { type DateRange, dailyDistanceSeries, rangeStartDate } from "../../domain/activity-metrics";
+import { computeReadiness } from "../../domain/readiness";
+import { activityRepository } from "../../repositories/activity-repository";
+import { wellnessRepository } from "../../repositories/wellness-repository";
+import { addDays, calendarDateKey } from "../../lib/dates";
+import { formatDuration } from "../../lib/formatting";
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
   { value: "week", label: "Week" },
@@ -52,11 +44,11 @@ async function DashboardContent({ searchParams }: { searchParams: Promise<Record
   // KPIs follow the selected range; training load uses a fixed trailing 30-day window.
   const since = rangeStartDate(range, now);
   const [sleepRows, hrvRows, loadActivities, latestSleep, latestHrv] = await Promise.all([
-    getSleepSince(since ? calendarDateKey(since) : null, calendarDateKey(now)),
-    getHrvSince(since ? calendarDateKey(since) : null, calendarDateKey(now)),
-    getActivitiesSince(addDays(now, -30), now),
-    getLatestSleep(),
-    getLatestHrv(),
+    wellnessRepository.findSleepSince(since ? calendarDateKey(since) : null, calendarDateKey(now)),
+    wellnessRepository.findHrvSince(since ? calendarDateKey(since) : null, calendarDateKey(now)),
+    activityRepository.findSince(addDays(now, -30), now),
+    wellnessRepository.findLatestSleep(),
+    wellnessRepository.findLatestHrv(),
   ]);
 
   const sleepSeconds = sleepRows.reduce((s, r) => s + (r.sleepTimeSeconds ?? 0), 0);

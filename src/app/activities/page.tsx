@@ -6,15 +6,8 @@ import { ElevationTrendChart } from "../../components/dashboard/elevation-trend-
 import { MonthlyMileageChart } from "../../components/dashboard/monthly-mileage-chart";
 import { PaceTrendChart } from "../../components/dashboard/pace-trend-chart";
 import { WeeklyMileageChart } from "../../components/dashboard/weekly-mileage-chart";
-import {
-  getActivitiesSince,
-  getRecentActivities,
-  monthlyMileage,
-  trendWindowStart,
-  weeklyElevation,
-  weeklyMileage,
-  weeklyPaceTrend,
-} from "../../lib/fitness-data";
+import { monthlyMileage, trendWindowStart, weeklyElevation, weeklyMileage, weeklyPaceTrend } from "../../domain/activity-metrics";
+import { activityRepository } from "../../repositories/activity-repository";
 
 export default function ActivitiesPage() {
   return (
@@ -39,8 +32,8 @@ async function FitnessContent() {
   const now = new Date();
   // ~6-month window covers the weekly + monthly charts; history is a separate capped query.
   const [activities, recent] = await Promise.all([
-    getActivitiesSince(trendWindowStart(now), now),
-    getRecentActivities(50),
+    activityRepository.findSince(trendWindowStart(now), now),
+    activityRepository.findRecent(50),
   ]);
 
   return (

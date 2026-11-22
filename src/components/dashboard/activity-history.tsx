@@ -1,12 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import {
-  activityTypeIcon,
-  formatDisplayDate,
-  formatDuration,
-  paceMinPerKm,
-  type ActivitySummary,
-} from '../../lib/fitness-data';
+import { METERS_PER_MILE, activityTypeIcon, formatDuration, paceMinPerMile } from '../../lib/formatting';
+import { formatDisplayDate } from '../../lib/dates';
+import type { ActivitySummary } from '../../domain/types';
 
 interface ActivityHistoryProps {
   activities: ActivitySummary[];
@@ -26,9 +22,9 @@ export function ActivityHistory({ activities }: ActivityHistoryProps) {
                 <th className="p-2" />
                 <th className="p-2 text-left font-medium">Date</th>
                 <th className="p-2 text-left font-medium">Activity</th>
-                <th className="p-2 text-right font-medium">Distance (km)</th>
+                <th className="p-2 text-right font-medium">Distance (mi)</th>
                 <th className="p-2 text-right font-medium">Time</th>
-                <th className="p-2 text-right font-medium">Pace (min/km)</th>
+                <th className="p-2 text-right font-medium">Pace (min/mi)</th>
                 <th className="p-2 text-right font-medium">Avg HR (bpm)</th>
               </tr>
             </thead>
@@ -44,9 +40,9 @@ export function ActivityHistory({ activities }: ActivityHistoryProps) {
                       {a.activityName}
                     </Link>
                   </td>
-                  <td className="p-2 text-right">{a.distance ? (a.distance / 1000).toFixed(1) : '—'}</td>
+                  <td className="p-2 text-right">{a.distance ? (a.distance / METERS_PER_MILE).toFixed(1) : '—'}</td>
                   <td className="p-2 text-right">{formatDuration(a.durationSeconds)}</td>
-                  <td className="p-2 text-right">{paceMinPerKm(a.distance, a.durationSeconds) ?? '—'}</td>
+                  <td className="p-2 text-right">{paceMinPerMile(a.distance, a.durationSeconds) ?? '—'}</td>
                   <td className="p-2 text-right">{a.avgHeartRate ?? '—'}</td>
                 </tr>
               ))}

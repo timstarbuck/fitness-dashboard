@@ -77,15 +77,17 @@ describe('Garmin Sync Service', () => {
 
       jest.spyOn(activitiesModule, 'fetchGarminActivities').mockResolvedValue([...mockActivities]);
 
-      // Mock database operations
-      const mockInsert = jest.fn<() => Promise<{}>>().mockResolvedValue({});
+      // Mock database operations. The upsert chain ends in .returning() (the
+      // repository needs the stored row's uuid to key split inserts); splits use
+      // .onConflictDoNothing().
+      const mockReturning = jest.fn<() => Promise<{ id: string }[]>>().mockResolvedValue([{ id: 'test-activity-uuid' }]);
       db.insert = jest.fn(() => ({
         values: jest.fn().mockReturnValue({
-          onConflictDoUpdate: jest.fn().mockReturnValue({
-            execute: mockInsert,
-          }),
+          onConflictDoUpdate: jest.fn().mockReturnThis(),
+          onConflictDoNothing: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+          returning: mockReturning,
         }),
-      })) as unknown as any;
+      })) as unknown as typeof db.insert;
 
       const result = await syncGarminActivities();
 
@@ -108,6 +110,57 @@ describe('Garmin Sync Service', () => {
       expect(result.fetched).toBe(1);
       expect(result.synced).toBe(1);
     }, 25000);
+
+    it('should key split inserts by the stored activity uuid, not the Garmin numeric id', async () => {
+      jest.spyOn(tokenModule, 'getGarminToken').mockResolvedValue(mockToken);
+
+      const mockActivities = [
+        {
+          activityId: 12345,
+          activityName: 'Test Activity',
+          startTimeLocal: '2024-01-15 12:00:00',
+          startTimeGMT: '2024-01-15 17:00:00',
+          distance: 5.2,
+          duration: 1800,
+          activityType: { typeId: 1, typeKey: 'running', parentTypeId: 2 },
+          calories: 300,
+        },
+      ] as const;
+
+      jest.spyOn(activitiesModule, 'fetchGarminActivities').mockResolvedValue([...mockActivities]);
+      jest.spyOn(activitiesModule, 'fetchGarminActivityDetails').mockResolvedValue({
+        activityId: 12345,
+        activityName: 'Test Activity',
+        startTimeLocal: '2024-01-15 12:00:00',
+        startTimeGMT: '2024-01-15 17:00:00',
+        activityType: { typeId: 1, typeKey: 'running', parentTypeId: 2 },
+        distance: 5.2,
+        duration: 1800,
+        calories: 300,
+        splits: [
+          { splitNumber: 1, distance: 2600, duration: 900, avgSpeed: 2.8 },
+          { splitNumber: 2, distance: 2600, duration: 950 },
+        ],
+      });
+
+      // The upsert's .returning() yields the stored row (uuid); splits must be
+      // keyed by that uuid because activity_splits.activity_id is a uuid FK.
+      const mockValues = jest.fn().mockReturnValue({
+        onConflictDoUpdate: jest.fn().mockReturnThis(),
+        onConflictDoNothing: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        returning: jest.fn<() => Promise<{ id: string }[]>>().mockResolvedValue([{ id: 'stored-activity-uuid' }]),
+      });
+      db.insert = jest.fn(() => ({ values: mockValues })) as unknown as typeof db.insert;
+
+      await syncGarminActivities();
+
+      // First values() call is the activity upsert; second is the splits insert.
+      const splitValues = mockValues.mock.calls[1][0] as Array<{ activityId: string }>;
+      expect(splitValues).toHaveLength(2);
+      for (const split of splitValues) {
+        expect(split.activityId).toBe('stored-activity-uuid');
+      }
+    });
   });
 
   describe('syncGarminHRV', () => {
@@ -150,7 +203,7 @@ describe('Garmin Sync Service', () => {
           onConflictDoUpdate: jest.fn().mockReturnThis(),
           returning: mockInsert,
         }),
-      })) as unknown as any;
+      })) as unknown as typeof db.insert;
 
       const result = await syncGarminHRV();
 
@@ -179,14 +232,14 @@ describe('Garmin Sync Service', () => {
 
       jest.spyOn(sleepModule, 'fetchGarminSleep').mockResolvedValue(mockSleepData);
 
-      const mockInsert = jest.fn<() => Promise<{}>>().mockResolvedValue({});
+      const mockInsert = jest.fn<() => Promise<unknown>>().mockResolvedValue({});
       db.insert = jest.fn(() => ({
         values: jest.fn().mockReturnValue({
           onConflictDoUpdate: jest.fn().mockReturnValue({
             execute: mockInsert,
           }),
         }),
-      })) as unknown as any;
+      })) as unknown as typeof db.insert;
 
       const result = await syncGarminSleep();
 

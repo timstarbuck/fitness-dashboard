@@ -1,5 +1,3 @@
-import { getGarminToken } from './token';
-
 export interface GarminHRVSummary {
   calendarDate: string;
   weeklyAvg: number;
@@ -13,27 +11,31 @@ export interface GarminHRVSummary {
   };
   status: string;
   feedbackPhrase: string;
-  createTimeStamp: string;
+  // May be omitted by the API; the DTO mapper falls back to the current time.
+  createTimeStamp?: string;
 }
 
 export interface GarminHRVReading {
   hrvValue: number;
-  readingTimeGMT: string;
-  readingTimeLocal: string;
+  // Reading timestamps may be omitted by the API; the DTO mapper falls back to now.
+  readingTimeGMT?: string;
+  readingTimeLocal?: string;
 }
 
 export interface GarminHRVResponse {
   userProfilePk: number;
   hrvSummary: GarminHRVSummary;
   hrvReadings: GarminHRVReading[];
-  startTimestampGMT: string;
-  endTimestampGMT: string;
-  startTimestampLocal: string;
-  endTimestampLocal: string;
-  sleepStartTimestampGMT: string;
-  sleepEndTimestampGMT: string;
-  sleepStartTimestampLocal: string;
-  sleepEndTimestampLocal: string;
+  // The window/sleep timestamps may be omitted by the API for some days; the DTO
+  // mapper (dto.ts) falls back to the current time when they are missing.
+  startTimestampGMT?: string;
+  endTimestampGMT?: string;
+  startTimestampLocal?: string;
+  endTimestampLocal?: string;
+  sleepStartTimestampGMT?: string;
+  sleepEndTimestampGMT?: string;
+  sleepStartTimestampLocal?: string;
+  sleepEndTimestampLocal?: string;
 }
 
 export async function fetchGarminHRV(
@@ -69,25 +71,4 @@ export async function fetchGarminHRV(
       `Failed to fetch HRV data: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
-}
-
-// Helper function to parse Garmin date strings (YYYY-MM-DD HH:mm:ss) or timestamps
-export function parseGarminDate(value?: string | number): Date | null {
-  if (!value) return null;
-  
-  // Handle numeric timestamps
-  if (typeof value === 'number') {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  
-  // Handle string dates
-  const date = new Date(value.trim().replace(' ', 'T') + 'Z');
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-// Helper function to parse Garmin date strings or timestamps, or return undefined
-export function parseGarminDateOrUndefined(value?: string | number): Date | undefined {
-  const parsed = parseGarminDate(value);
-  return parsed === null ? undefined : parsed;
 }

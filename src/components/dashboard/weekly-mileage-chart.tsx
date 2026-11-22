@@ -11,7 +11,7 @@ interface WeeklyMileageChartProps {
 export function WeeklyMileageChart({ data }: WeeklyMileageChartProps) {
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <h3 className="text-lg font-medium mb-4">Weekly Mileage</h3>
+      <h3 className="text-lg font-medium mb-4">Weekly Mileage (mi)</h3>
       <BaseChart 
         data={data}
         dataKey="value"

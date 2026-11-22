@@ -1,0 +1,59 @@
+import { describe, expect, it } from "@jest/globals";
+import { computeReadiness } from "../readiness";
+
+describe("computeReadiness", () => {
+  it("returns no-data when there is neither HRV nor sleep", () => {
+    const r = computeReadiness(null, null);
+    expect(r.status).toBe("no-data");
+    expect(r.label).toBe("NO DATA");
+  });
+
+  it("is ready when HRV is above baseline and sleep is long", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: 90, lastNightAvg: 100, baselineBalancedLow: null, baselineMarkerValue: 80 },
+      { calendarDate: "2026-11-20", sleepTimeSeconds: 7 * 3600 + 1200 },
+    );
+    expect(r.status).toBe("ready");
+    expect(r.label).toBe("READY TO TRAIN");
+  });
+
+  it("suggests an easy day for mixed recovery", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: null, lastNightAvg: 70, baselineBalancedLow: null, baselineMarkerValue: 80 },
+      { calendarDate: "2026-11-20", sleepTimeSeconds: 6 * 3600 + 1800 },
+    );
+    expect(r.status).toBe("caution");
+  });
+
+  it("recommends rest when HRV is well below baseline and sleep is short", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: null, lastNightAvg: 50, baselineBalancedLow: null, baselineMarkerValue: 80 },
+      { calendarDate: "2026-11-20", sleepTimeSeconds: 5 * 3600 },
+    );
+    expect(r.status).toBe("rest");
+  });
+
+  it("treats HRV without a baseline as neutral", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: null, lastNightAvg: 90, baselineBalancedLow: null, baselineMarkerValue: null },
+      { calendarDate: "2026-11-20", sleepTimeSeconds: 8 * 3600 },
+    );
+    expect(r.status).toBe("ready"); // 0.5 (no baseline) + 1 (8h sleep) = 1.5
+  });
+
+  it("falls back to weeklyAvg when lastNightAvg is missing", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: 85, lastNightAvg: null, baselineBalancedLow: null, baselineMarkerValue: 80 },
+      { calendarDate: "2026-11-20", sleepTimeSeconds: 7 * 3600 },
+    );
+    expect(r.status).toBe("ready"); // 85/80 >= 1 -> +1, plus 7h sleep -> +1
+  });
+
+  it("handles missing sleep data with HRV only", () => {
+    const r = computeReadiness(
+      { calendarDate: "2026-11-20", weeklyAvg: null, lastNightAvg: 100, baselineBalancedLow: null, baselineMarkerValue: 80 },
+      null,
+    );
+    expect(r.status).toBe("caution"); // 1 point from HRV only
+  });
+});

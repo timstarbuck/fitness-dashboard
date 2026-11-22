@@ -1,13 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  activityTypeIcon,
-  formatDisplayDateTime,
-  formatDuration,
-  getActivityWithSplits,
-  paceMinPerKm,
-} from "../../../lib/fitness-data";
+import { METERS_PER_MILE, activityTypeIcon, formatDuration, paceMinPerMile } from "../../../lib/formatting";
+import { formatDisplayDateTime } from "../../../lib/dates";
+import { activityRepository } from "../../../repositories/activity-repository";
 
 export default function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
@@ -21,7 +17,7 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
 
 async function ActivityDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await getActivityWithSplits(id);
+  const result = await activityRepository.findByIdWithSplits(id);
   if (!result) notFound();
 
   const { activity, splits } = result;
@@ -42,9 +38,9 @@ async function ActivityDetail({ params }: { params: Promise<{ id: string }> }) {
       </header>
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Distance" value={activity.distance ? `${(activity.distance / 1000).toFixed(1)} km` : "—"} />
+        <Stat label="Distance" value={activity.distance ? `${(activity.distance / METERS_PER_MILE).toFixed(2)} mi` : "—"} />
         <Stat label="Time" value={formatDuration(activity.durationSeconds)} />
-        <Stat label="Pace" value={paceMinPerKm(activity.distance, activity.durationSeconds) ?? "—"} />
+        <Stat label="Pace" value={paceMinPerMile(activity.distance, activity.durationSeconds) ?? "—"} />
         <Stat label="Avg HR" value={activity.avgHeartRate ? `${activity.avgHeartRate} bpm` : "—"} />
         <Stat label="Max HR" value={activity.maxHeartRate ? `${activity.maxHeartRate} bpm` : "—"} />
         <Stat label="Calories" value={activity.calories ? `${Math.round(activity.calories)} kcal` : "—"} />
@@ -67,18 +63,18 @@ async function ActivityDetail({ params }: { params: Promise<{ id: string }> }) {
               <thead>
                 <tr className="border-b text-muted-foreground">
                   <th className="p-2 text-left font-medium">#</th>
-                  <th className="p-2 text-right font-medium">Distance (km)</th>
+                  <th className="p-2 text-right font-medium">Distance (mi)</th>
                   <th className="p-2 text-right font-medium">Time</th>
-                  <th className="p-2 text-right font-medium">Pace (min/km)</th>
+                  <th className="p-2 text-right font-medium">Pace (min/mi)</th>
                 </tr>
               </thead>
               <tbody>
                 {splits.map((split) => (
                   <tr key={split.id} className="border-b">
                     <td className="p-2">{split.splitNumber}</td>
-                    <td className="p-2 text-right">{(split.distance / 1000).toFixed(2)}</td>
+                    <td className="p-2 text-right">{(split.distance / METERS_PER_MILE).toFixed(2)}</td>
                     <td className="p-2 text-right">{formatDuration(split.durationSeconds)}</td>
-                    <td className="p-2 text-right">{paceMinPerKm(split.distance, split.durationSeconds) ?? "—"}</td>
+                    <td className="p-2 text-right">{paceMinPerMile(split.distance, split.durationSeconds) ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,10 +1,12 @@
 export interface GarminSleepResponse {
   id: number;
   userProfilePK: number;
-  calendarDate: string;
-  sleepTimeSeconds: number;
-  napTimeSeconds: number;
-  sleepWindowConfirmed: boolean;
+  // The remaining fields may be omitted by the API for some days. The DTO mapper
+  // (dto.ts) normalizes missing values to null before persistence.
+  calendarDate?: string;
+  sleepTimeSeconds?: number;
+  napTimeSeconds?: number;
+  sleepWindowConfirmed?: boolean;
   sleepWindowConfirmationType?: string;
   sleepStartTimestampGMT?: string;
   sleepEndTimestampGMT?: string;
@@ -14,11 +16,11 @@ export interface GarminSleepResponse {
   autoSleepEndTimestampGMT?: string;
   sleepQualityTypePK?: string;
   sleepResultTypePK?: string;
-  unmeasurableSleepSeconds: number;
-  deepSleepSeconds: number;
-  lightSleepSeconds: number;
-  remSleepSeconds: number;
-  awakeSleepSeconds: number;
+  unmeasurableSleepSeconds?: number;
+  deepSleepSeconds?: number;
+  lightSleepSeconds?: number;
+  remSleepSeconds?: number;
+  awakeSleepSeconds?: number;
   deviceRemCapable?: boolean;
   sleepFromDevice?: boolean;
   averageSpO2Value?: number;
@@ -76,25 +78,4 @@ export async function fetchGarminSleep(
       `Failed to fetch sleep data: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
-}
-
-// Helper function to parse Garmin date strings (YYYY-MM-DD HH:mm:ss) or timestamps
-export function parseGarminDate(value?: string | number): Date | null {
-  if (!value) return null;
-  
-  // Handle numeric timestamps
-  if (typeof value === 'number') {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  
-  // Handle string dates
-  const date = new Date(value.trim().replace(' ', 'T') + 'Z');
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-// Helper function to parse Garmin date strings or timestamps, or return undefined
-export function parseGarminDateOrUndefined(value?: string | number): Date | undefined {
-  const parsed = parseGarminDate(value);
-  return parsed === null ? undefined : parsed;
 }

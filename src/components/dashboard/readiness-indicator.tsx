@@ -1,4 +1,4 @@
-import type { Readiness } from "../../lib/fitness-data";
+import type { Readiness } from "../../domain/readiness";
 
 const STYLES: Record<Readiness["status"], { badge: string; dot: string }> = {
   ready: { badge: "bg-forest/10 text-forest border-forest/30", dot: "bg-forest" },

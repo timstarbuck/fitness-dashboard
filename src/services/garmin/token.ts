@@ -1,4 +1,4 @@
-export interface GarminTokenResponse {
+interface GarminTokenResponse {
   access_token: string;
   expires_in: number;
   token_type: string;
