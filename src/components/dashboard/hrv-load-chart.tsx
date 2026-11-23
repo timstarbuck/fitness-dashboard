@@ -10,7 +10,7 @@ export function HrvLoadChart({ points, baseline }: { points: HrvLoadPoint[]; bas
     () => ({
       tooltip: { trigger: "axis" },
       legend: { data: ["Training Load (mi)", "HRV (ms)"], textStyle: { color: AXIS_LABEL_COLOR } },
-      grid: { left: 48, right: 56, top: 32, bottom: 28 },
+      grid: { left: 48, right: 56, top: 32, bottom: 64 },
       xAxis: { type: "category", boundaryGap: false, data: points.map((p) => p.name), axisLabel: { color: AXIS_LABEL_COLOR } },
       yAxis: [
         { type: "value", name: "mi", axisLabel: { color: AXIS_LABEL_COLOR }, splitLine: { lineStyle: { color: SPLIT_LINE_COLOR } } },

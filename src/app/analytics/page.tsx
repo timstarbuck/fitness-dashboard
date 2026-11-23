@@ -51,6 +51,14 @@ async function AnalyticsContent() {
   return (
     <div className="space-y-8">
       <section className="rounded-xl border bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-medium">HRV vs Training Load</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Daily training load (miles) against HRV, with the current HRV baseline as a dashed reference.
+        </p>
+        <HrvLoadChart points={hrvLoadPoints} baseline={baseline} />
+      </section>
+
+      <section className="rounded-xl border bg-card p-6 shadow-sm">
         <h3 className="text-lg font-medium">Sleep vs Run Pace</h3>
         <p className="mb-4 mt-1 text-sm text-muted-foreground">
           Each point is a run paired with the sleep score from the night before. A downward trend suggests better
@@ -63,13 +71,6 @@ async function AnalyticsContent() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6 shadow-sm">
-        <h3 className="text-lg font-medium">HRV vs Training Load</h3>
-        <p className="mb-4 mt-1 text-sm text-muted-foreground">
-          Daily training load (miles) against HRV, with the current HRV baseline as a dashed reference.
-        </p>
-        <HrvLoadChart points={hrvLoadPoints} baseline={baseline} />
-      </section>
 
       <section className="rounded-xl border bg-card p-6 shadow-sm">
         <h3 className="text-lg font-medium">Stress vs Body Battery</h3>
