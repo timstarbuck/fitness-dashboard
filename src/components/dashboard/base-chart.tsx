@@ -4,7 +4,8 @@ import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, BarChart, Bar } from 'recharts';
 
 interface ChartProps {
-  data: Array<{ name: string; value: number }>;
+  // `value` may be null (no data that day); line/area connect across gaps.
+  data: Array<{ name: string; value: number | null }>;
   dataKey?: string;
   color?: string;
   type?: 'line' | 'area' | 'bar';
@@ -34,12 +35,12 @@ export function BaseChart({ data, dataKey = "value", color = "#8884d8", type = '
         ) : type === 'area' ? (
           <AreaChart data={data}>
             {common}
-            <Area type="monotone" dataKey={dataKey} stroke={color} fill={color + '40'} />
+            <Area type="monotone" dataKey={dataKey} stroke={color} fill={color + '40'} connectNulls />
           </AreaChart>
         ) : (
           <LineChart data={data}>
             {common}
-            <Line type="monotone" dataKey={dataKey} stroke={color} />
+            <Line type="monotone" dataKey={dataKey} stroke={color} connectNulls />
           </LineChart>
         )}
       </ResponsiveContainer>

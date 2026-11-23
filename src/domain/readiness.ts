@@ -25,7 +25,9 @@ export function computeReadiness(hrv: HrSummary | null, sleep: SleepSummary | nu
 
   if (hrv) {
     const value = hrv.lastNightAvg ?? hrv.weeklyAvg;
-    const baseline = hrv.baselineMarkerValue ?? hrv.baselineBalancedLow;
+    // baselineBalancedLow is the ms reference (Garmin's balanced-zone lower bound).
+    // baselineMarkerValue is a normalized chart position (0-1), not ms — never compare against it.
+    const baseline = hrv.baselineBalancedLow;
     if (value != null && baseline != null && baseline > 0) {
       const ratio = value / baseline;
       if (ratio >= 1) {

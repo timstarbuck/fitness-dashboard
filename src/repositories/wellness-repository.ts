@@ -14,6 +14,10 @@ export type HrvDataRow = typeof hrvData.$inferSelect;
 const SLEEP_COLUMNS = {
   calendarDate: sleepData.calendarDate,
   sleepTimeSeconds: sleepData.sleepTimeSeconds,
+  deepSleepSeconds: sleepData.deepSleepSeconds,
+  remSleepSeconds: sleepData.remSleepSeconds,
+  awakeCount: sleepData.awakeCount,
+  sleepScoreFeedback: sleepData.sleepScoreFeedback,
 };
 
 const HRV_COLUMNS = {
@@ -32,6 +36,7 @@ const DAILY_SUMMARY_COLUMNS = {
   activeKilocalories: userDailySummary.activeKilocalories,
   restingHeartRate: userDailySummary.restingHeartRate,
   bodyBatteryMostRecentValue: userDailySummary.bodyBatteryMostRecentValue,
+  averageStressLevel: userDailySummary.averageStressLevel,
   stressQualifier: userDailySummary.stressQualifier,
 };
 
