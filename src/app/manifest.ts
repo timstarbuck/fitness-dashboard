@@ -1,0 +1,25 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Fitness/Health Overview",
+    short_name: "Fitness",
+    description: "Personal Fitness/Health Dashboard",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#14532D",
+    theme_color: "#14532D",
+    icons: [
+      {
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+  };
+}

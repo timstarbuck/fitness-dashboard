@@ -1,0 +1,9 @@
+{
+  "schedules": {
+    "garmin-sync": {
+      "path": "/api/sync/garmin",
+      "schedule": "0 2,8,14,20 * * *",
+      "requestMethod": "GET"
+    }
+  }
+}
