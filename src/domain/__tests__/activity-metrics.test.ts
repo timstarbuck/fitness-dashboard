@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { dailyDistanceSeries, monthlyMileage, weeklyElevation, weeklyMileage, weeklyPaceTrend } from "../activity-metrics";
+import { dailyDistanceSeries, monthlyMileage, rangeStartDate, weeklyElevation, weeklyMileage, weeklyPaceTrend } from "../activity-metrics";
+import { calendarDateKey } from "../../lib/dates";
 import type { ActivitySummary } from "../types";
 
 // jest.setup.ts sets TIMEZONE=America/New_York (EDT in November, UTC-4).
@@ -23,6 +24,25 @@ function act(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
     ...overrides,
   };
 }
+
+describe("rangeStartDate", () => {
+  // Inclusive calendar-day span between two YYYY-MM-DD keys (timezone-independent).
+  function inclusiveDays(startKey: string, endKey: string): number {
+    const start = Date.parse(`${startKey}T00:00:00Z`);
+    const end = Date.parse(`${endKey}T00:00:00Z`);
+    return Math.round((end - start) / 86400000) + 1;
+  }
+
+  it("week covers exactly 7 calendar days including today", () => {
+    const start = rangeStartDate("week", NOW);
+    expect(start).not.toBeNull();
+    expect(inclusiveDays(calendarDateKey(start!), calendarDateKey(NOW))).toBe(7);
+  });
+
+  it("all is unbounded (null start)", () => {
+    expect(rangeStartDate("all", NOW)).toBeNull();
+  });
+});
 
 describe("dailyDistanceSeries", () => {
   it("zero-fills every day in the window and sums same-day activities", () => {

@@ -79,13 +79,13 @@ export function dailyDistanceSeries(acts: ActivitySummary[], days = 7, now: Date
 
 export type DateRange = "week" | "month" | "all";
 
-/** Start of the selected KPI range; null for "all". */
+/** Start of the selected KPI range; null for "all". The dashboard queries an inclusive [start, today] window, so the offset is one less than the day count (e.g. -6 → 7 days). */
 export function rangeStartDate(range: DateRange, now: Date = new Date()): Date | null {
   switch (range) {
     case "week":
-      return addDays(now, -7);
+      return addDays(now, -6); // 7 calendar days including today
     case "month":
-      return addDays(now, -30);
+      return addDays(now, -30); // trailing ~1 month including today
     case "all":
       return null;
   }
