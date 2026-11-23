@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { syncGarminActivities, syncGarminHRV, syncGarminSleep, type SyncOptions } from '@/services/garmin/sync';
+import {
+  syncGarminActivities,
+  syncGarminHRV,
+  syncGarminSleep,
+  syncGarminUserDailySummary,
+  resolveSyncTypes,
+  SYNC_TYPES,
+  type SyncOptions,
+  type SyncType,
+} from '@/services/garmin/sync';
 import { acquireSyncLock, releaseSyncLock } from '@/services/garmin/syncLock';
 
 // Lock name for this sync process. Must be unique per sync type so that
@@ -36,17 +45,19 @@ function isValidCalendarDate(value: string): boolean {
 }
 
 /**
- * Read optional `startDate`/`endDate` (YYYY-MM-DD) query params. Returns a
- * 400 response when either is malformed, or the options object otherwise
- * (omitted params keep their defaults in the sync service).
+ * Read optional `startDate`/`endDate` (YYYY-MM-DD), `syncType`, and the legacy
+ * `syncHRV`/`syncSleep` query params. Returns a 400 response when any is
+ * malformed, or the options object otherwise (omitted params keep their
+ * defaults in the sync service).
  */
-function parseDateRange(
+function parseSyncParams(
   request: NextRequest
 ): { options?: SyncOptions; error?: NextResponse } {
   const startDate = request.nextUrl.searchParams.get('startDate') ?? undefined;
   const endDate = request.nextUrl.searchParams.get('endDate') ?? undefined;
   const syncHRV = request.nextUrl.searchParams.get('syncHRV') === 'true';
   const syncSleep = request.nextUrl.searchParams.get('syncSleep') === 'true';
+  const syncTypeRaw = request.nextUrl.searchParams.get('syncType') ?? undefined;
 
   for (const [name, value] of Object.entries({ startDate, endDate })) {
     if (value !== undefined && !isValidCalendarDate(value)) {
@@ -68,7 +79,20 @@ function parseDateRange(
     };
   }
 
-  return { options: { startDate, endDate, syncHRV, syncSleep } };
+  let syncType: SyncType | undefined;
+  if (syncTypeRaw !== undefined) {
+    if (!(SYNC_TYPES as readonly string[]).includes(syncTypeRaw)) {
+      return {
+        error: NextResponse.json(
+          { error: `Invalid syncType. Expected one of: ${SYNC_TYPES.join(', ')}.` },
+          { status: 400 }
+        ),
+      };
+    }
+    syncType = syncTypeRaw as SyncType;
+  }
+
+  return { options: { startDate, endDate, syncHRV, syncSleep, syncType } };
 }
 
 async function handleSync(request: NextRequest): Promise<NextResponse> {
@@ -86,8 +110,8 @@ async function handleSync(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { options, error: dateError } = parseDateRange(request);
-  if (dateError) return dateError;
+  const { options, error: parseError } = parseSyncParams(request);
+  if (parseError) return parseError;
 
   // Single-flight guard. The lock lives in Postgres so it works across
   // serverless function instances (an in-memory flag would not, since each
@@ -115,25 +139,36 @@ async function handleSync(request: NextRequest): Promise<NextResponse> {
     
     const results = [];
     const syncOptions: SyncOptions = options || {};
-    
+
+    // Resolve which data types to sync. Default (no params) is all types;
+    // `syncType` selects a single type; the legacy syncHRV/syncSleep booleans
+    // keep their previous "only those types" behavior.
+    const types = resolveSyncTypes(syncOptions);
+
     // Sync activities
-    if (!syncOptions.syncHRV && !syncOptions.syncSleep) {
+    if (types.includes('activities')) {
       const activityResult = await syncGarminActivities(syncOptions);
       results.push({ type: 'activities', ...activityResult });
     }
-    
+
     // Sync HRV data
-    if (syncOptions.syncHRV) {
+    if (types.includes('hrv')) {
       const hrvResult = await syncGarminHRV(syncOptions);
       results.push({ type: 'hrv', ...hrvResult });
     }
-    
+
     // Sync sleep data
-    if (syncOptions.syncSleep) {
+    if (types.includes('sleep')) {
       const sleepResult = await syncGarminSleep(syncOptions);
       results.push({ type: 'sleep', ...sleepResult });
     }
-    
+
+    // Sync user daily summary data
+    if (types.includes('usersummary')) {
+      const summaryResult = await syncGarminUserDailySummary(syncOptions);
+      results.push({ type: 'usersummary', ...summaryResult });
+    }
+
     console.log('API: Garmin sync completed.')
 
     return NextResponse.json({

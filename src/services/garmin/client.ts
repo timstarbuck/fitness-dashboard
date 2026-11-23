@@ -2,6 +2,7 @@ import { getGarminToken } from './token';
 import { fetchGarminActivities, fetchGarminActivityDetails, type ActivityDateRange, type GarminActivity } from './activities';
 import { fetchGarminHRV, type GarminHRVResponse } from './hrv';
 import { fetchGarminSleep, type GarminSleepResponse } from './sleep';
+import { fetchGarminUserDailySummary, type GarminUserDailySummaryResponse } from './usersummary';
 
 /** Default retry delay in seconds when no specific Retry-After value is present. */
 const RETRY_DELAY_DEFAULT = 60;
@@ -30,9 +31,9 @@ export function delay(ms: number): Promise<void> {
 /**
  * Low-level Garmin Connect API client.
  *
- * Wraps the raw HTTP fetch functions (token, activities, HRV, sleep) with
- * rate-limit retry handling. No database access happens here — persistence is
- * the SyncOrchestrator's job (see sync.ts).
+ * Wraps the raw HTTP fetch functions (token, activities, HRV, sleep, user
+ * daily summary) with rate-limit retry handling. No database access happens
+ * here — persistence is the SyncOrchestrator's job (see sync.ts).
  */
 export class GarminClient {
   /**
@@ -127,6 +128,23 @@ export class GarminClient {
       await delay(RETRY_DELAY_DEFAULT * 1000);
 
       return fetchGarminSleep(token, date);
+    }
+  }
+
+  /** Fetch the user daily summary for a single calendar date (YYYY-MM-DD), retrying once on rate limit. */
+  async fetchUserDailySummary(token: string, date: string): Promise<GarminUserDailySummaryResponse> {
+    try {
+      return await fetchGarminUserDailySummary(token, date);
+    } catch (error) {
+      const retryDelay = getRetryDelayFromError(error);
+      if (!retryDelay) {
+        throw error;
+      }
+
+      console.log(`Rate limit hit while fetching user daily summary. Waiting ${retryDelay} seconds before retrying...`);
+      await delay(RETRY_DELAY_DEFAULT * 1000);
+
+      return fetchGarminUserDailySummary(token, date);
     }
   }
 }

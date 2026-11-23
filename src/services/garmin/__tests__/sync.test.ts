@@ -3,6 +3,7 @@ import {
   syncGarminActivities, 
   syncGarminHRV, 
   syncGarminSleep,
+  syncGarminUserDailySummary,
   getRetryDelayFromError,
   delay
 } from '../sync';
@@ -13,6 +14,7 @@ import * as tokenModule from '../token';
 import * as activitiesModule from '../activities';
 import * as hrvModule from '../hrv';
 import * as sleepModule from '../sleep';
+import * as usersummaryModule from '../usersummary';
 
 describe('Garmin Sync Service', () => {
   const mockToken = 'test-token-12345';
@@ -245,6 +247,67 @@ describe('Garmin Sync Service', () => {
 
       expect(result.fetched).toBe(2);
       expect(result.synced).toBe(2);
+    });
+  });
+
+  describe('syncGarminUserDailySummary', () => {
+    it('should sync user daily summary data successfully', async () => {
+      jest.spyOn(tokenModule, 'getGarminToken').mockResolvedValue(mockToken);
+
+      const mockSummaryData = {
+        userProfileId: 3001799,
+        userDailySummaryId: 3001799,
+        calendarDate: '2024-01-15',
+        totalSteps: 10000,
+        dailyStepGoal: 8000,
+        totalKilocalories: 2500,
+        activeKilocalories: 1200,
+        restingHeartRate: 52,
+      };
+
+      jest.spyOn(usersummaryModule, 'fetchGarminUserDailySummary').mockResolvedValue(mockSummaryData);
+
+      const mockInsert = jest.fn<() => Promise<unknown>>().mockResolvedValue({});
+      db.insert = jest.fn(() => ({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            execute: mockInsert,
+          }),
+        }),
+      })) as unknown as typeof db.insert;
+
+      const result = await syncGarminUserDailySummary();
+
+      expect(result.fetched).toBe(2);
+      expect(result.synced).toBe(2);
+    });
+
+    it('should skip days where the API reports no data', async () => {
+      jest.spyOn(tokenModule, 'getGarminToken').mockResolvedValue(mockToken);
+
+      let callCount = 0;
+      jest.spyOn(usersummaryModule, 'fetchGarminUserDailySummary').mockImplementation(async () => {
+        callCount++;
+        // First day has no data (404), second day does.
+        if (callCount === 1) {
+          throw new Error('Failed to fetch user daily summary: HTTP error! status: 404 - Not Found');
+        }
+        return { calendarDate: '2024-01-16', totalSteps: 500 };
+      });
+
+      const mockInsert = jest.fn<() => Promise<unknown>>().mockResolvedValue({});
+      db.insert = jest.fn(() => ({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            execute: mockInsert,
+          }),
+        }),
+      })) as unknown as typeof db.insert;
+
+      const result = await syncGarminUserDailySummary();
+
+      expect(result.fetched).toBe(1);
+      expect(result.synced).toBe(1);
     });
   });
 });

@@ -125,3 +125,112 @@ export const sleepData = pgTable("sleep_data", {
   ownerId: varchar("owner_id", { length: 255 }).notNull(),
   rawPayload: jsonb("raw_payload"),
 });
+
+// Daily user summary from Garmin (steps, calories, stress, body battery, etc.)
+export const userDailySummary = pgTable("user_daily_summaries", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userProfileId: bigint("user_profile_id", { mode: "number" }),
+  userDailySummaryId: bigint("user_daily_summary_id", { mode: "number" }),
+  uuid: varchar("uuid", { length: 255 }),
+  calendarDate: varchar("calendar_date", { length: 10 }).notNull().unique(), // YYYY-MM-DD
+  wellnessStartTimeGmt: timestamp("wellness_start_time_gmt"),
+  wellnessStartTimeLocal: timestamp("wellness_start_time_local"),
+  wellnessEndTimeGmt: timestamp("wellness_end_time_gmt"),
+  wellnessEndTimeLocal: timestamp("wellness_end_time_local"),
+  durationInMilliseconds: doublePrecision("duration_in_milliseconds"),
+  wellnessDescription: varchar("wellness_description", { length: 255 }),
+
+  // Calories
+  totalKilocalories: doublePrecision("total_kilocalories"),
+  activeKilocalories: doublePrecision("active_kilocalories"),
+  bmrKilocalories: doublePrecision("bmr_kilocalories"),
+  consumedKilocalories: doublePrecision("consumed_kilocalories"),
+  remainingKilocalories: doublePrecision("remaining_kilocalories"),
+
+  // Steps & distance
+  totalSteps: integer("total_steps"),
+  dailyStepGoal: integer("daily_step_goal"),
+  totalDistanceMeters: doublePrecision("total_distance_meters"),
+  wellnessDistanceMeters: doublePrecision("wellness_distance_meters"),
+
+  // Activity time (seconds)
+  highlyActiveSeconds: doublePrecision("highly_active_seconds"),
+  activeSeconds: doublePrecision("active_seconds"),
+  sedentarySeconds: doublePrecision("sedentary_seconds"),
+  sleepingSeconds: doublePrecision("sleeping_seconds"),
+
+  // Intensity & floors
+  moderateIntensityMinutes: doublePrecision("moderate_intensity_minutes"),
+  vigorousIntensityMinutes: doublePrecision("vigorous_intensity_minutes"),
+  intensityMinutesGoal: doublePrecision("intensity_minutes_goal"),
+  floorsAscendedInMeters: doublePrecision("floors_ascended_in_meters"),
+  floorsDescendedInMeters: doublePrecision("floors_descended_in_meters"),
+  floorsAscended: doublePrecision("floors_ascended"),
+  floorsDescended: doublePrecision("floors_descended"),
+  userFloorsAscendedGoal: doublePrecision("user_floors_ascended_goal"),
+
+  // Heart rate
+  minHeartRate: integer("min_heart_rate"),
+  maxHeartRate: integer("max_heart_rate"),
+  restingHeartRate: integer("resting_heart_rate"),
+  lastSevenDaysAvgRestingHeartRate: integer("last_seven_days_avg_resting_heart_rate"),
+  minAvgHeartRate: integer("min_avg_heart_rate"),
+  maxAvgHeartRate: integer("max_avg_heart_rate"),
+
+  // Stress (levels, durations in seconds, percentages)
+  averageStressLevel: integer("average_stress_level"),
+  maxStressLevel: integer("max_stress_level"),
+  stressDuration: doublePrecision("stress_duration"),
+  restStressDuration: doublePrecision("rest_stress_duration"),
+  activityStressDuration: doublePrecision("activity_stress_duration"),
+  uncategorizedStressDuration: doublePrecision("uncategorized_stress_duration"),
+  totalStressDuration: doublePrecision("total_stress_duration"),
+  lowStressDuration: doublePrecision("low_stress_duration"),
+  mediumStressDuration: doublePrecision("medium_stress_duration"),
+  highStressDuration: doublePrecision("high_stress_duration"),
+  stressPercentage: doublePrecision("stress_percentage"),
+  restStressPercentage: doublePrecision("rest_stress_percentage"),
+  activityStressPercentage: doublePrecision("activity_stress_percentage"),
+  uncategorizedStressPercentage: doublePrecision("uncategorized_stress_percentage"),
+  lowStressPercentage: doublePrecision("low_stress_percentage"),
+  mediumStressPercentage: doublePrecision("medium_stress_percentage"),
+  highStressPercentage: doublePrecision("high_stress_percentage"),
+  stressQualifier: varchar("stress_qualifier", { length: 50 }),
+
+  // Sleep/awake (seconds)
+  measurableAwakeDuration: doublePrecision("measurable_awake_duration"),
+  measurableAsleepDuration: doublePrecision("measurable_asleep_duration"),
+
+  // Body battery (0-100)
+  bodyBatteryChargedValue: integer("body_battery_charged_value"),
+  bodyBatteryDrainedValue: integer("body_battery_drained_value"),
+  bodyBatteryHighestValue: integer("body_battery_highest_value"),
+  bodyBatteryLowestValue: integer("body_battery_lowest_value"),
+  bodyBatteryMostRecentValue: integer("body_battery_most_recent_value"),
+  bodyBatteryDuringSleep: integer("body_battery_during_sleep"),
+  bodyBatteryAtWakeTime: integer("body_battery_at_wake_time"),
+  bodyBatteryVersion: integer("body_battery_version"),
+
+  // SpO2, respiration & environment
+  abnormalHeartRateAlertsCount: integer("abnormal_heart_rate_alerts_count"),
+  averageSpo2: doublePrecision("average_spo2"),
+  lowestSpo2: doublePrecision("lowest_spo2"),
+  latestSpo2: doublePrecision("latest_spo2"),
+  latestSpo2ReadingTimeGmt: timestamp("latest_spo2_reading_time_gmt"),
+  latestSpo2ReadingTimeLocal: timestamp("latest_spo2_reading_time_local"),
+  averageMonitoringEnvironmentAltitude: doublePrecision("average_monitoring_environment_altitude"),
+  avgWakingRespirationValue: doublePrecision("avg_waking_respiration_value"),
+  highestRespirationValue: doublePrecision("highest_respiration_value"),
+  lowestRespirationValue: doublePrecision("lowest_respiration_value"),
+  latestRespirationValue: doublePrecision("latest_respiration_value"),
+  latestRespirationTimeGMT: timestamp("latest_respiration_time_gmt"),
+
+  // Flags & metadata
+  includesWellnessData: boolean("includes_wellness_data"),
+  includesActivityData: boolean("includes_activity_data"),
+  includesCalorieConsumedData: boolean("includes_calorie_consumed_data"),
+  source: varchar("source", { length: 50 }),
+  lastSyncTimestampGMT: timestamp("last_sync_timestamp_gmt"),
+  ownerId: varchar("owner_id", { length: 255 }).notNull(),
+  rawPayload: jsonb("raw_payload"),
+});

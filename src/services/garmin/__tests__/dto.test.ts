@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { toActivityRecord, toSplitRecords, toSleepRecord, toHrvRecord, toHrvReadingRecords } from '../dto';
+import { toActivityRecord, toSplitRecords, toSleepRecord, toHrvRecord, toHrvReadingRecords, toUserDailySummaryRecord } from '../dto';
 import type { GarminActivity } from '../activities';
 
 const baseActivity: GarminActivity = {
@@ -208,5 +208,72 @@ describe('toHrvReadingRecords', () => {
     const records = toHrvReadingRecords('hrv-uuid', [{ hrvValue: 42 }]);
 
     expect(records[0].readingTimeGMT).toBeInstanceOf(Date);
+  });
+});
+
+describe('toUserDailySummaryRecord', () => {
+  const baseResponse = {
+    userProfileId: 3001799,
+    userDailySummaryId: 3001799,
+    uuid: 'aed1edd1be1f4c6d89b45b6a1a6e9948',
+    calendarDate: '2026-11-21',
+    wellnessStartTimeGmt: '2026-11-21T06:00:00.0',
+    wellnessEndTimeGmt: '2026-11-22T06:00:00.0',
+    durationInMilliseconds: 86400000,
+    totalKilocalories: 3379,
+    activeKilocalories: 1425,
+    bmrKilocalories: 1954,
+    totalSteps: 25010,
+    dailyStepGoal: 12270,
+    totalDistanceMeters: 21300,
+    restingHeartRate: 44,
+    stressQualifier: 'BALANCED',
+    bodyBatteryMostRecentValue: 16,
+    includesWellnessData: true,
+    source: 'GARMIN',
+  };
+
+  it('maps a complete response to the internal record', () => {
+    const record = toUserDailySummaryRecord(baseResponse, '2026-11-21');
+
+    expect(record).not.toBeNull();
+    expect(record?.calendarDate).toBe('2026-11-21');
+    expect(record?.userProfileId).toBe(3001799);
+    expect(record?.uuid).toBe('aed1edd1be1f4c6d89b45b6a1a6e9948');
+    expect(record?.totalSteps).toBe(25010);
+    expect(record?.dailyStepGoal).toBe(12270);
+    expect(record?.totalKilocalories).toBe(3379);
+    expect(record?.restingHeartRate).toBe(44);
+    expect(record?.stressQualifier).toBe('BALANCED');
+    expect(record?.bodyBatteryMostRecentValue).toBe(16);
+    expect(record?.includesWellnessData).toBe(true);
+  });
+
+  it('parses the fractional-second Garmin timestamps', () => {
+    const record = toUserDailySummaryRecord(baseResponse, '2026-11-21');
+
+    expect(record?.wellnessStartTimeGmt?.toISOString()).toBe('2026-11-21T06:00:00.000Z');
+    expect(record?.wellnessEndTimeGmt?.toISOString()).toBe('2026-11-22T06:00:00.000Z');
+  });
+
+  it('falls back to the requested date when calendarDate is missing', () => {
+    const record = toUserDailySummaryRecord({ ...baseResponse, calendarDate: undefined }, '2026-11-20');
+
+    expect(record?.calendarDate).toBe('2026-11-20');
+  });
+
+  it('nulls out optional fields that are absent', () => {
+    const record = toUserDailySummaryRecord(
+      { ...baseResponse, totalSteps: undefined, restingHeartRate: undefined, includesWellnessData: undefined },
+      '2026-11-21'
+    );
+
+    expect(record?.totalSteps).toBeNull();
+    expect(record?.restingHeartRate).toBeNull();
+    expect(record?.includesWellnessData).toBeNull();
+  });
+
+  it('returns null when no calendar date is available', () => {
+    expect(toUserDailySummaryRecord({ ...baseResponse, calendarDate: undefined }, '')).toBeNull();
   });
 });

@@ -1,8 +1,8 @@
 import { and, desc, gte, lte } from "drizzle-orm";
 import { db } from "../../db";
-import { hrvData, hrvReadings, sleepData } from "../../db/schema";
-import type { HrSummary, SleepSummary } from "../domain/types";
-import type { HrvRecord, HrvReadingRecord, SleepRecord } from "../services/garmin/dto";
+import { hrvData, hrvReadings, sleepData, userDailySummary } from "../../db/schema";
+import type { DailySummary, HrSummary, SleepSummary } from "../domain/types";
+import type { HrvRecord, HrvReadingRecord, SleepRecord, UserDailySummaryRecord } from "../services/garmin/dto";
 
 type Database = typeof db;
 
@@ -24,11 +24,22 @@ const HRV_COLUMNS = {
   baselineMarkerValue: hrvData.baselineMarkerValue,
 };
 
+const DAILY_SUMMARY_COLUMNS = {
+  calendarDate: userDailySummary.calendarDate,
+  totalSteps: userDailySummary.totalSteps,
+  dailyStepGoal: userDailySummary.dailyStepGoal,
+  totalKilocalories: userDailySummary.totalKilocalories,
+  activeKilocalories: userDailySummary.activeKilocalories,
+  restingHeartRate: userDailySummary.restingHeartRate,
+  bodyBatteryMostRecentValue: userDailySummary.bodyBatteryMostRecentValue,
+  stressQualifier: userDailySummary.stressQualifier,
+};
+
 /**
  * Single source of truth for all data access on the wellness tables
- * (`sleep_data`, `hrv_data`, `hrv_readings`). Inject a different database
- * instance (e.g. in unit tests) via the constructor; defaults to the app's
- * shared client.
+ * (`sleep_data`, `hrv_data`, `hrv_readings`, `user_daily_summaries`). Inject a
+ * different database instance (e.g. in unit tests) via the constructor;
+ * defaults to the app's shared client.
  */
 export class WellnessRepository {
   private readonly db: Database;
@@ -70,6 +81,19 @@ export class WellnessRepository {
     return row ?? null;
   }
 
+  /** Daily summary rows whose calendar date falls in [sinceKey, untilKey] (YYYY-MM-DD strings). `sinceKey` null = all-time. */
+  findDailySummarySince(sinceKey: string | null, untilKey: string): Promise<DailySummary[]> {
+    const conditions = [lte(userDailySummary.calendarDate, untilKey)];
+    if (sinceKey) conditions.unshift(gte(userDailySummary.calendarDate, sinceKey));
+    return this.db.select(DAILY_SUMMARY_COLUMNS).from(userDailySummary).where(and(...conditions)).orderBy(desc(userDailySummary.calendarDate));
+  }
+
+  /** Most recent daily summary row (by calendar date), or null. */
+  async findLatestDailySummary(): Promise<DailySummary | null> {
+    const [row] = await this.db.select(DAILY_SUMMARY_COLUMNS).from(userDailySummary).orderBy(desc(userDailySummary.calendarDate)).limit(1);
+    return row ?? null;
+  }
+
   // -----------------------------------------------------------------------
   // Writes (Garmin sync)
   // -----------------------------------------------------------------------
@@ -80,6 +104,14 @@ export class WellnessRepository {
       .insert(sleepData)
       .values({ ...record, ownerId: OWNER_ID, rawPayload })
       .onConflictDoUpdate({ target: sleepData.calendarDate, set: { ...record, ownerId: OWNER_ID, rawPayload } });
+  }
+
+  /** Insert or update a day of user summary by calendar date. */
+  async upsertUserDailySummary(record: UserDailySummaryRecord, rawPayload?: unknown): Promise<void> {
+    await this.db
+      .insert(userDailySummary)
+      .values({ ...record, ownerId: OWNER_ID, rawPayload })
+      .onConflictDoUpdate({ target: userDailySummary.calendarDate, set: { ...record, ownerId: OWNER_ID, rawPayload } });
   }
 
   /** Insert or update a day of HRV by calendar date. Returns the stored row (its uuid keys reading inserts). */

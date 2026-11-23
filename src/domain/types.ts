@@ -33,3 +33,15 @@ export interface HrSummary {
   baselineBalancedLow: number | null;
   baselineMarkerValue: number | null;
 }
+
+/** User daily summary row (wellness data for the dashboard). */
+export interface DailySummary {
+  calendarDate: string; // YYYY-MM-DD (Garmin local date)
+  totalSteps: number | null;
+  dailyStepGoal: number | null;
+  totalKilocalories: number | null;
+  activeKilocalories: number | null;
+  restingHeartRate: number | null;
+  bodyBatteryMostRecentValue: number | null;
+  stressQualifier: string | null;
+}

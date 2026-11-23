@@ -10,9 +10,15 @@ jest.mock('../../../../../services/garmin/syncLock', () => ({
 }));
 
 jest.mock('../../../../../services/garmin/sync', () => ({
+  // Keep the real resolveSyncTypes/SYNC_TYPES so the route's type-selection
+  // logic is exercised; only mock the sync functions themselves.
+  ...jest.requireActual<typeof import('../../../../../services/garmin/sync')>(
+    '../../../../../services/garmin/sync'
+  ),
   syncGarminActivities: jest.fn(),
   syncGarminHRV: jest.fn(),
   syncGarminSleep: jest.fn(),
+  syncGarminUserDailySummary: jest.fn(),
 }));
 
 // Import mocked modules after mocking them
@@ -90,7 +96,7 @@ describe('Garmin Sync API Route', () => {
     it('should handle HRV and sleep sync options', async () => {
       jest.spyOn(syncLock, 'acquireSyncLock').mockResolvedValue('test-lock-token');
       jest.spyOn(syncLock, 'releaseSyncLock').mockResolvedValue(undefined);
-      
+
       jest.spyOn(sync, 'syncGarminHRV').mockResolvedValue({
         fetched: 1,
         synced: 1,
@@ -102,9 +108,60 @@ describe('Garmin Sync API Route', () => {
       });
 
       const request = new NextRequest(new URL('http://localhost:3000/api/sync/garmin?token=test-secret&syncHRV=true&syncSleep=true'));
-      
+
       const response = await GET(request);
       expect(response.status).toBe(200);
+
+      // Legacy booleans keep their previous behavior: only the flagged types run.
+      expect(sync.syncGarminActivities).not.toHaveBeenCalled();
+      expect(sync.syncGarminHRV).toHaveBeenCalled();
+      expect(sync.syncGarminSleep).toHaveBeenCalled();
+    });
+
+    it('should sync all types by default when no type params are given', async () => {
+      jest.spyOn(syncLock, 'acquireSyncLock').mockResolvedValue('test-lock-token');
+      jest.spyOn(syncLock, 'releaseSyncLock').mockResolvedValue(undefined);
+
+      const request = new NextRequest(new URL('http://localhost:3000/api/sync/garmin?token=test-secret'));
+
+      const response = await GET(request);
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.results.map((r: { type: string }) => r.type)).toEqual(
+        expect.arrayContaining(['activities', 'hrv', 'sleep', 'usersummary'])
+      );
+    });
+
+    it('should sync only the requested type when syncType is given', async () => {
+      jest.spyOn(syncLock, 'acquireSyncLock').mockResolvedValue('test-lock-token');
+      jest.spyOn(syncLock, 'releaseSyncLock').mockResolvedValue(undefined);
+
+      jest.spyOn(sync, 'syncGarminUserDailySummary').mockResolvedValue({
+        fetched: 1,
+        synced: 1,
+      });
+
+      const request = new NextRequest(new URL('http://localhost:3000/api/sync/garmin?token=test-secret&syncType=usersummary'));
+
+      const response = await GET(request);
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.results).toHaveLength(1);
+      expect(body.results[0].type).toBe('usersummary');
+
+      expect(sync.syncGarminActivities).not.toHaveBeenCalled();
+      expect(sync.syncGarminHRV).not.toHaveBeenCalled();
+      expect(sync.syncGarminSleep).not.toHaveBeenCalled();
+      expect(sync.syncGarminUserDailySummary).toHaveBeenCalled();
+    });
+
+    it('should return 400 for an invalid syncType', async () => {
+      const request = new NextRequest(new URL('http://localhost:3000/api/sync/garmin?token=test-secret&syncType=bogus'));
+
+      const response = await GET(request);
+      expect(response.status).toBe(400);
     });
 
     it('should return 400 for invalid date format', async () => {

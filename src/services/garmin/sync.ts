@@ -2,7 +2,8 @@ import { GarminClient, garminClient } from './client';
 import type { ActivityDateRange } from './activities';
 import type { GarminHRVResponse } from './hrv';
 import type { GarminSleepResponse } from './sleep';
-import { toActivityRecord, toSplitRecords, toHrvRecord, toHrvReadingRecords, toSleepRecord } from './dto';
+import type { GarminUserDailySummaryResponse } from './usersummary';
+import { toActivityRecord, toSplitRecords, toHrvRecord, toHrvReadingRecords, toSleepRecord, toUserDailySummaryRecord } from './dto';
 import { ActivityRepository, activityRepository } from '../../repositories/activity-repository';
 import { WellnessRepository, wellnessRepository } from '../../repositories/wellness-repository';
 
@@ -24,10 +25,41 @@ export interface SleepSyncResult {
   synced: number;
 }
 
+export interface UserDailySummarySyncResult {
+  fetched: number;
+  synced: number;
+}
+
+/** The data types a Garmin sync can fetch. */
+export const SYNC_TYPES = ['activities', 'hrv', 'sleep', 'usersummary'] as const;
+export type SyncType = (typeof SYNC_TYPES)[number];
+
 export type SyncOptions = ActivityDateRange & {
   syncHRV?: boolean;
   syncSleep?: boolean;
+  /** When set, only this type is synced (takes precedence over the legacy booleans). */
+  syncType?: SyncType;
 };
+
+/**
+ * Resolve which data types to sync from the options:
+ * - `syncType` set → only that type;
+ * - legacy booleans (`syncHRV`/`syncSleep`) set → exactly those types
+ *   (activities excluded, preserving the previous route behavior);
+ * - otherwise → all types.
+ */
+export function resolveSyncTypes(options: SyncOptions): SyncType[] {
+  if (options.syncType) return [options.syncType];
+
+  if (options.syncHRV || options.syncSleep) {
+    const types: SyncType[] = [];
+    if (options.syncHRV) types.push('hrv');
+    if (options.syncSleep) types.push('sleep');
+    return types;
+  }
+
+  return [...SYNC_TYPES];
+}
 
 // Calendar date (YYYY-MM-DD) of the given instant in the user's timezone.
 // Vercel functions run on UTC, so without an explicit TIMEZONE the "current
@@ -268,6 +300,69 @@ class SyncOrchestrator {
     console.log('Garmin sleep sync completed.');
     return { fetched, synced };
   }
+
+  async syncUserDailySummary(options: SyncOptions = {}): Promise<UserDailySummarySyncResult> {
+    const range = resolveDateRange(options);
+
+    console.log(
+      `Starting Garmin user daily summary sync (startDate=${range.startDate}, endDate=${range.endDate})...`
+    );
+
+    const token = await this.client.getToken();
+
+    let synced = 0;
+    let fetched = 0;
+
+    // Sync user summary data for each day in the range
+    const currentDate = new Date(range.startDate as string);
+    const endDate = new Date(range.endDate as string);
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().slice(0, 10); // YYYY-MM-DD
+
+      try {
+        let summaryResponse: GarminUserDailySummaryResponse;
+        try {
+          summaryResponse = await this.client.fetchUserDailySummary(token, dateStr);
+        } catch (error) {
+          // Summary data might not be available for all days, skip if not found
+          // or if the response is empty/invalid
+          if (this.isDataNotFoundError(error)) {
+            console.log(`No user summary data available for ${dateStr}: ${(error as Error).message}`);
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+            continue;
+          }
+          throw error;
+        }
+
+        fetched++;
+
+        // Map the raw API response to our internal record (falls back to the
+        // requested date when the response has no calendarDate)
+        const summaryRecord = toUserDailySummaryRecord(summaryResponse, dateStr);
+
+        // Skip if calendarDate is still null (shouldn't happen with the fallback)
+        if (!summaryRecord) {
+          console.log(`Skipping user summary data for ${dateStr}: no calendar date available`);
+          currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+          continue;
+        }
+
+        await this.wellness.upsertUserDailySummary(summaryRecord, summaryResponse);
+
+        synced++;
+        console.log(`Synced user summary data for ${dateStr}`);
+      } catch (err) {
+        console.error(`Failed to sync user summary data for ${dateStr}:`, err);
+      }
+
+      // Move to the next day
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+
+    console.log('Garmin user daily summary sync completed.');
+    return { fetched, synced };
+  }
 }
 
 /** Shared orchestrator instance (stateless; safe to reuse across sync runs). */
@@ -283,4 +378,8 @@ export async function syncGarminHRV(options: SyncOptions = {}): Promise<HRVSyncR
 
 export async function syncGarminSleep(options: SyncOptions = {}): Promise<SleepSyncResult> {
   return syncOrchestrator.syncSleep(options);
+}
+
+export async function syncGarminUserDailySummary(options: SyncOptions = {}): Promise<UserDailySummarySyncResult> {
+  return syncOrchestrator.syncUserDailySummary(options);
 }
