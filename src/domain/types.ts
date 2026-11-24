@@ -4,6 +4,9 @@
 // SELECT column sets produce exactly these shapes).
 // ---------------------------------------------------------------------------
 
+/** Unit for a distance value: statute miles, or meters (used for rowing). */
+export type DistanceUnit = "miles" | "meters";
+
 /** Activity row without the (large) rawPayload jsonb — used for lists, KPIs and charts. */
 export interface ActivitySummary {
   id: string;

@@ -78,6 +78,11 @@ describe("weeklyMileage", () => {
     expect(series[0].value).toBe(7.5); // 12 km ≈ 7.5 mi, older week first
     expect(series[1].value).toBe(6.2); // 10 km ≈ 6.2 mi
   });
+
+  it("returns raw meters when unit is 'meters' (rowing)", () => {
+    const acts = [act({ startTimeGmt: new Date("2026-11-19T15:00:00Z"), distance: 8000 })];
+    expect(weeklyMileage(acts, "meters")[0].value).toBe(8000); // meters pass through, not divided
+  });
 });
 
 describe("monthlyMileage", () => {
