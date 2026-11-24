@@ -272,6 +272,14 @@ class SyncOrchestrator {
           throw error;
         }
 
+        // A 200 response with a null id means Garmin has no sleep record for
+        // this day (e.g. the user wasn't wearing a device); nothing to persist.
+        if (sleepDataResponse.id == null) {
+          console.log(`No sleep data available for ${dateStr}: response has no record id`);
+          currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+          continue;
+        }
+
         fetched++;
 
         // Map the raw API response to our internal record (falls back to the
