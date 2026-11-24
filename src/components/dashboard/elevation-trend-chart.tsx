@@ -17,6 +17,8 @@ export function ElevationTrendChart({ data }: ElevationTrendChartProps) {
         dataKey="value"
         color="#44403C" // Stone
         type="bar"
+        xAxisLabel="Week"
+        yAxisLabel="Elevation Gain (m)"
       />
     </div>
   );

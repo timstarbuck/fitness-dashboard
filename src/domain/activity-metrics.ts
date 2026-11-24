@@ -1,6 +1,6 @@
 import { addDays, calendarDateKey, formatDayLabel, isoWeekKey, monthKey } from "../lib/dates";
 import { METERS_PER_MILE, isRunningActivity } from "../lib/formatting";
-import type { ActivitySummary } from "./types";
+import type { ActivitySummary, DistanceUnit } from "./types";
 
 // ---------------------------------------------------------------------------
 // Aggregations (pure functions over in-memory activity rows)
@@ -23,14 +23,19 @@ function toSeries(acts: ActivitySummary[], keyFn: (a: ActivitySummary) => string
     .map(([name, value]) => ({ name, value: round1(value) }));
 }
 
-/** Weekly distance in miles. */
-export function weeklyMileage(acts: ActivitySummary[]): SeriesPoint[] {
-  return toSeries(acts, (a) => isoWeekKey(a.startTimeGmt), (a) => (a.distance ?? 0) / METERS_PER_MILE);
+/** Distance in the requested unit (meters pass through; miles divide by METERS_PER_MILE). */
+function distanceInUnit(meters: number, unit: DistanceUnit): number {
+  return unit === "miles" ? meters / METERS_PER_MILE : meters;
 }
 
-/** Monthly distance in miles. */
-export function monthlyMileage(acts: ActivitySummary[]): SeriesPoint[] {
-  return toSeries(acts, (a) => monthKey(a.startTimeGmt), (a) => (a.distance ?? 0) / METERS_PER_MILE);
+/** Weekly distance, in miles by default (meters for rowing). */
+export function weeklyMileage(acts: ActivitySummary[], unit: DistanceUnit = "miles"): SeriesPoint[] {
+  return toSeries(acts, (a) => isoWeekKey(a.startTimeGmt), (a) => distanceInUnit(a.distance ?? 0, unit));
+}
+
+/** Monthly distance, in miles by default (meters for rowing). */
+export function monthlyMileage(acts: ActivitySummary[], unit: DistanceUnit = "miles"): SeriesPoint[] {
+  return toSeries(acts, (a) => monthKey(a.startTimeGmt), (a) => distanceInUnit(a.distance ?? 0, unit));
 }
 
 /** Weekly elevation gain in meters. */
@@ -79,13 +84,13 @@ export function dailyDistanceSeries(acts: ActivitySummary[], days = 7, now: Date
 
 export type DateRange = "week" | "month" | "all";
 
-/** Start of the selected KPI range; null for "all". */
+/** Start of the selected KPI range; null for "all". The dashboard queries an inclusive [start, today] window, so the offset is one less than the day count (e.g. -6 → 7 days). */
 export function rangeStartDate(range: DateRange, now: Date = new Date()): Date | null {
   switch (range) {
     case "week":
-      return addDays(now, -7);
+      return addDays(now, -6); // 7 calendar days including today
     case "month":
-      return addDays(now, -30);
+      return addDays(now, -30); // trailing ~1 month including today
     case "all":
       return null;
   }

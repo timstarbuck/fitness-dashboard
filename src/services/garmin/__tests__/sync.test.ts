@@ -248,6 +248,33 @@ describe('Garmin Sync Service', () => {
       expect(result.fetched).toBe(2);
       expect(result.synced).toBe(2);
     });
+
+    it('should skip days where the response has no record id', async () => {
+      jest.spyOn(tokenModule, 'getGarminToken').mockResolvedValue(mockToken);
+
+      let callCount = 0;
+      jest.spyOn(sleepModule, 'fetchGarminSleep').mockImplementation(async () => {
+        callCount++;
+        // First day has no record (id: null), second day does.
+        if (callCount === 1) {
+          return { id: null, userProfilePK: 67890 };
+        }
+        return { id: 12345, userProfilePK: 67890, calendarDate: '2024-01-16', sleepTimeSeconds: 28800 };
+      });
+
+      const mockUpsert = jest.fn<() => Promise<unknown>>().mockResolvedValue({});
+      db.insert = jest.fn(() => ({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: mockUpsert,
+        }),
+      })) as unknown as typeof db.insert;
+
+      const result = await syncGarminSleep();
+
+      expect(result.fetched).toBe(1);
+      expect(result.synced).toBe(1);
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('syncGarminUserDailySummary', () => {

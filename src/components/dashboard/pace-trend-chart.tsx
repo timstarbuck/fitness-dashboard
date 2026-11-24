@@ -16,6 +16,8 @@ export function PaceTrendChart({ data }: PaceTrendChartProps) {
         data={data}
         dataKey="value"
         color="#F97316" // Orange
+        xAxisLabel="Week"
+        yAxisLabel="Pace (min/mi)"
       />
     </div>
   );

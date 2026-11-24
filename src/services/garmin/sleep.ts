@@ -1,5 +1,7 @@
 export interface GarminSleepResponse {
-  id: number;
+  // null when the API has no sleep record for the requested day (a 200
+  // response with an otherwise empty body); sync skips persistence in that case.
+  id: number | null;
   userProfilePK: number;
   // The remaining fields may be omitted by the API for some days. The DTO mapper
   // (dto.ts) normalizes missing values to null before persistence.

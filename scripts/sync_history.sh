@@ -4,7 +4,7 @@
 mkdir -p scripts/sync_history_logs
 
 # Set the start date and current date
-start_date="2026-11-01"
+start_date="2026-11-15"
 current_date=$(date +%Y-%m-%d)
 
 # Function to add days to a date (macOS compatible)
