@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { BodyBatteryChart } from "../../components/dashboard/body-battery-chart";
 import { HrvTrendChart } from "../../components/dashboard/hrv-trend-chart";
@@ -13,6 +14,11 @@ import { formatDuration } from "../../lib/formatting";
 import { wellnessRepository } from "../../repositories/wellness-repository";
 
 const TREND_DAYS = 30;
+
+export const metadata: Metadata = {
+  title: "Recovery",
+  description: "Sleep score, HRV, stress, and body battery trends for recovery tracking.",
+};
 
 export default function RecoveryPage() {
   return (
