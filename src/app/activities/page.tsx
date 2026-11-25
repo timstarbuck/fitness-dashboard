@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { ActivityHistory } from "../../components/dashboard/activity-history";
 import { ActivityTypeFilter, type ActivityTypeOption } from "../../components/dashboard/activity-type-filter";
@@ -11,6 +12,11 @@ import { YearlyMileageChart } from "../../components/dashboard/yearly-mileage-ch
 import { monthlyMileage, trendWindowStart, weeklyElevation, weeklyMileage, weeklyPaceTrend, yearlyMileage } from "../../domain/activity-metrics";
 import { activityTypeLabel, distanceUnitForType, distinctActivityTypes, filterByActivityType } from "../../domain/activity-types";
 import { activityRepository } from "../../repositories/activity-repository";
+
+export const metadata: Metadata = {
+  title: "Activities",
+  description: "Activity history with mileage, pace, and elevation trends.",
+};
 
 export default function ActivitiesPage({ searchParams }: PageProps<"/activities">) {
   return (

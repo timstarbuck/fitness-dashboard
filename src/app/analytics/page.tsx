@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { HrvLoadChart } from "../../components/dashboard/hrv-load-chart";
 import { HeartbeatsPerMileChart } from "../../components/dashboard/heartbeats-per-mile-chart";
@@ -12,6 +13,11 @@ import { wellnessRepository } from "../../repositories/wellness-repository";
 
 // Scatter plots pair rows across tables, so they use a wider window for more points.
 const SCATTER_DAYS = 90;
+
+export const metadata: Metadata = {
+  title: "Analytics",
+  description: "Correlations between sleep, stress, heart rate, and training load.",
+};
 
 export default function AnalyticsPage() {
   return (

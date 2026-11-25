@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { KpiCard } from "../../components/dashboard/kpi-card";
 import { ReadinessIndicator } from "../../components/dashboard/readiness-indicator";
@@ -21,6 +22,11 @@ function parseRange(value: string | string[] | undefined): DateRange {
   const v = Array.isArray(value) ? value[0] : value;
   return v === "month" || v === "all" ? v : "week";
 }
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Daily readiness, training load, and key wellness KPIs at a glance.",
+};
 
 export default function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   return (
