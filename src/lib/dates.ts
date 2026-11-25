@@ -41,6 +41,12 @@ export function monthKey(d: Date): string {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
+/** Year key (YYYY) in the user's timezone. */
+export function yearKey(d: Date): string {
+  const { year } = partsInTimeZone(d);
+  return String(year);
+}
+
 /** e.g. "Nov 20, 2026" in the user's timezone. */
 export function formatDisplayDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {

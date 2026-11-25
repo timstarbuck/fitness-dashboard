@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { calendarDateKey, isoWeekKey, monthKey } from "../dates";
+import { calendarDateKey, isoWeekKey, monthKey, yearKey } from "../dates";
 
 // jest.setup.ts sets TIMEZONE=America/New_York (EDT in November, UTC-4).
 const NOW = new Date("2026-11-20T12:00:00Z"); // 7:00 AM Nov 20 in New York
@@ -23,5 +23,10 @@ describe("date helpers (America/New_York)", () => {
   it("monthKey uses the user timezone", () => {
     expect(monthKey(new Date("2026-11-30T23:00:00Z"))).toBe("2026-11"); // 6 PM Nov 30 in NY
     expect(monthKey(new Date("2026-12-01T03:00:00Z"))).toBe("2026-11"); // 11 PM Nov 30 in NY
+  });
+
+  it("yearKey uses the user timezone", () => {
+    expect(yearKey(new Date("2026-12-31T23:00:00Z"))).toBe("2026"); // 6 PM Dec 31 in NY
+    expect(yearKey(new Date("2027-01-01T03:00:00Z"))).toBe("2026"); // 11 PM Dec 31 in NY
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { dailyDistanceSeries, monthlyMileage, rangeStartDate, weeklyElevation, weeklyMileage, weeklyPaceTrend } from "../activity-metrics";
+import { dailyDistanceSeries, monthlyMileage, rangeStartDate, weeklyElevation, weeklyMileage, weeklyPaceTrend, yearlyMileage } from "../activity-metrics";
 import { calendarDateKey } from "../../lib/dates";
 import type { ActivitySummary } from "../types";
 
@@ -94,6 +94,25 @@ describe("monthlyMileage", () => {
     const series = monthlyMileage(acts);
     expect(series.map((p) => p.name)).toEqual(["2026-10", "2026-11"]);
     expect(series[1].value).toBe(5); // 8 km ≈ 5 mi
+  });
+});
+
+describe("yearlyMileage", () => {
+  it("sums distance per calendar year, sorted chronologically", () => {
+    const acts = [
+      act({ startTimeGmt: new Date("2026-11-19T15:00:00Z"), distance: 8000 }), // Nov 2026
+      act({ startTimeGmt: new Date("2025-12-31T15:00:00Z"), distance: 4000 }), // Dec 2025
+      act({ startTimeGmt: new Date("2026-01-05T15:00:00Z"), distance: 2000 }), // Jan 2026, same year
+    ];
+    const series = yearlyMileage(acts);
+    expect(series.map((p) => p.name)).toEqual(["2025", "2026"]);
+    expect(series[0].value).toBe(2.5); // 4 km ≈ 2.5 mi
+    expect(series[1].value).toBe(6.2); // 8 km + 2 km = 10 km ≈ 6.2 mi
+  });
+
+  it("returns raw meters when unit is 'meters' (rowing)", () => {
+    const acts = [act({ startTimeGmt: new Date("2026-11-19T15:00:00Z"), distance: 8000 })];
+    expect(yearlyMileage(acts, "meters")[0].value).toBe(8000); // meters pass through, not divided
   });
 });
 

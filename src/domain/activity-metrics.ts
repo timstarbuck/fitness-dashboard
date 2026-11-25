@@ -1,4 +1,4 @@
-import { addDays, calendarDateKey, formatDayLabel, isoWeekKey, monthKey } from "../lib/dates";
+import { addDays, calendarDateKey, formatDayLabel, isoWeekKey, monthKey, yearKey } from "../lib/dates";
 import { METERS_PER_MILE, isRunningActivity } from "../lib/formatting";
 import type { ActivitySummary, DistanceUnit } from "./types";
 
@@ -36,6 +36,11 @@ export function weeklyMileage(acts: ActivitySummary[], unit: DistanceUnit = "mil
 /** Monthly distance, in miles by default (meters for rowing). */
 export function monthlyMileage(acts: ActivitySummary[], unit: DistanceUnit = "miles"): SeriesPoint[] {
   return toSeries(acts, (a) => monthKey(a.startTimeGmt), (a) => distanceInUnit(a.distance ?? 0, unit));
+}
+
+/** Yearly distance, in miles by default (meters for rowing). */
+export function yearlyMileage(acts: ActivitySummary[], unit: DistanceUnit = "miles"): SeriesPoint[] {
+  return toSeries(acts, (a) => yearKey(a.startTimeGmt), (a) => distanceInUnit(a.distance ?? 0, unit));
 }
 
 /** Weekly elevation gain in meters. */
