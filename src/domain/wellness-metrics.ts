@@ -1,4 +1,4 @@
-import { addDays, calendarDateKey, formatDayLabel } from "../lib/dates";
+import { addDays, calendarDateKey, formatDayLabel, formatMonthDay } from "../lib/dates";
 import { METERS_PER_MILE, isRunningActivity } from "../lib/formatting";
 import type { ActivitySummary, DailySummary, HrSummary, SleepSummary } from "./types";
 import { computeSleepScore } from "./sleep-score";
@@ -151,6 +151,34 @@ export function stressVsBodyBattery(rows: DailySummary[]): CorrelationPoint[] {
   return rows
     .filter((r) => r.averageStressLevel != null && r.bodyBatteryMostRecentValue != null)
     .map((r) => ({ x: r.averageStressLevel!, y: r.bodyBatteryMostRecentValue!, date: r.calendarDate }));
+}
+
+// ---------------------------------------------------------------------------
+// Activity-derived series
+// ---------------------------------------------------------------------------
+
+/** One activity's heartbeats per mile, for the trend line chart. */
+export interface HeartbeatPoint {
+  name: string; // e.g. "Nov 20" (x-axis label)
+  value: number; // heartbeats per mile, rounded to 1 decimal
+}
+
+/**
+ * Heartbeats per mile = (avg heart rate × duration in minutes) / distance in miles.
+ * Includes activities with measured distance, duration and avg heart rate within
+ * the trailing `days` days; sorted oldest first.
+ */
+export function heartbeatsPerMile(acts: ActivitySummary[], days = 90, now: Date = new Date()): HeartbeatPoint[] {
+  const since = addDays(now, -(days - 1));
+
+  return acts
+    .filter((a) => a.startTimeGmt >= since && a.startTimeGmt <= now && a.distance > 0 && a.durationSeconds > 0 && (a.avgHeartRate ?? 0) > 0)
+    .sort((a, b) => a.startTimeGmt.getTime() - b.startTimeGmt.getTime())
+    .map((a) => {
+      const minutes = a.durationSeconds / 60;
+      const miles = a.distance / METERS_PER_MILE;
+      return { name: formatMonthDay(a.startTimeGmt), value: round1(((a.avgHeartRate ?? 0) * minutes) / miles) };
+    });
 }
 
 function round1(n: number): number {

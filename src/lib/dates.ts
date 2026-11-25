@@ -68,6 +68,11 @@ export function formatDayLabel(d: Date): string {
   return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "short" }).format(d);
 }
 
+/** e.g. "Nov 20" in the user's timezone (no year). */
+export function formatMonthDay(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, month: "short", day: "numeric" }).format(d);
+}
+
 // ---------------------------------------------------------------------------
 // Range + window helpers
 // ---------------------------------------------------------------------------
