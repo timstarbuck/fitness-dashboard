@@ -2,9 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { HrvLoadChart } from "../../components/dashboard/hrv-load-chart";
+import { HeartbeatsPerMileChart } from "../../components/dashboard/heartbeats-per-mile-chart";
 import { SleepPaceScatter } from "../../components/dashboard/sleep-pace-scatter";
 import { StressBatteryScatter } from "../../components/dashboard/stress-battery-scatter";
-import { hrvVsTrainingLoad, sleepVsPace, stressVsBodyBattery } from "../../domain/wellness-metrics";
+import { heartbeatsPerMile, hrvVsTrainingLoad, sleepVsPace, stressVsBodyBattery } from "../../domain/wellness-metrics";
 import { addDays, calendarDateKey } from "../../lib/dates";
 import { activityRepository } from "../../repositories/activity-repository";
 import { wellnessRepository } from "../../repositories/wellness-repository";
@@ -46,6 +47,7 @@ async function AnalyticsContent() {
 
   const sleepPace = sleepVsPace(sleepRows, activities);
   const { points: hrvLoadPoints, baseline } = hrvVsTrainingLoad(hrvRows, activities, 30, now);
+  const heartbeats = heartbeatsPerMile(activities, SCATTER_DAYS, now);
   const stressBattery = stressVsBodyBattery(summaryRows);
 
   return (
@@ -56,6 +58,18 @@ async function AnalyticsContent() {
           Daily training load (miles) against HRV, with the current HRV baseline as a dashed reference.
         </p>
         <HrvLoadChart points={hrvLoadPoints} baseline={baseline} />
+      </section>
+
+      <section className="rounded-xl border bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-medium">Heartbeats per Mile</h3>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Heartbeats per mile (avg heart rate × duration ÷ distance) for each activity in the last {SCATTER_DAYS} days.
+        </p>
+        {heartbeats.length > 0 ? (
+          <HeartbeatsPerMileChart points={heartbeats} />
+        ) : (
+          <EmptyChart note={`No activities with heart rate data in the last ${SCATTER_DAYS} days.`} />
+        )}
       </section>
 
       <section className="rounded-xl border bg-card p-6 shadow-sm">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { bodyBatterySeries, dailyWellnessSeries, hrvVsTrainingLoad, sleepScoreSeries, sleepVsPace, stressSeries, stressVsBodyBattery } from "../wellness-metrics";
+import { bodyBatterySeries, dailyWellnessSeries, heartbeatsPerMile, hrvVsTrainingLoad, sleepScoreSeries, sleepVsPace, stressSeries, stressVsBodyBattery } from "../wellness-metrics";
 import type { ActivitySummary, DailySummary, HrSummary, SleepSummary } from "../types";
 
 // jest.setup.ts sets TIMEZONE=America/New_York (EDT in November, UTC-4).
@@ -167,5 +167,41 @@ describe("bodyBatterySeries / stressSeries", () => {
     const rows = [summaryRow("2026-11-19", { bodyBatteryMostRecentValue: 55 })];
     const series = bodyBatterySeries(rows, 1, nyEvening);
     expect(series[0].value).toBe(55);
+  });
+});
+
+describe("heartbeatsPerMile", () => {
+  it("computes (avg HR × minutes) / miles per activity, oldest first", () => {
+    const acts = [
+      // 5 mi in 60 min @ 150 bpm -> (150 × 60) / 5 = 1800
+      act({ startTimeGmt: new Date("2026-11-19T15:00:00Z"), distance: 8046.72, durationSeconds: 3600, avgHeartRate: 150 }),
+      // 2.5 mi in 30 min @ 120 bpm -> (120 × 30) / 2.5 = 1440
+      act({ startTimeGmt: new Date("2026-11-18T15:00:00Z"), distance: 4023.36, durationSeconds: 1800, avgHeartRate: 120 }),
+    ];
+
+    const points = heartbeatsPerMile(acts, 90, NOW);
+    expect(points).toHaveLength(2);
+    // Sorted oldest first: Nov 18 then Nov 19 (labels use the user's timezone)
+    expect(points[0].name).toBe("Nov 18");
+    expect(points[0].value).toBe(1440);
+    expect(points[1].name).toBe("Nov 19");
+    expect(points[1].value).toBe(1800);
+  });
+
+  it("skips activities without distance, duration or avg heart rate", () => {
+    const acts = [act({ distance: 0 }), act({ durationSeconds: 0 }), act({ avgHeartRate: null }), act({ avgHeartRate: 0 })];
+    expect(heartbeatsPerMile(acts, 90, NOW)).toHaveLength(0);
+  });
+
+  it("excludes activities outside the trailing window", () => {
+    const acts = [
+      act({ startTimeGmt: new Date("2026-11-19T15:00:00Z") }), // inside
+      act({ startTimeGmt: new Date("2026-08-01T15:00:00Z") }), // ~111 days before NOW -> outside
+      act({ startTimeGmt: new Date("2026-11-25T15:00:00Z") }), // in the future -> outside
+    ];
+
+    const points = heartbeatsPerMile(acts, 90, NOW);
+    expect(points).toHaveLength(1);
+    expect(points[0].name).toBe("Nov 19");
   });
 });

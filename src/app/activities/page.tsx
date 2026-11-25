@@ -7,7 +7,8 @@ import { ElevationTrendChart } from "../../components/dashboard/elevation-trend-
 import { MonthlyMileageChart } from "../../components/dashboard/monthly-mileage-chart";
 import { PaceTrendChart } from "../../components/dashboard/pace-trend-chart";
 import { WeeklyMileageChart } from "../../components/dashboard/weekly-mileage-chart";
-import { monthlyMileage, trendWindowStart, weeklyElevation, weeklyMileage, weeklyPaceTrend } from "../../domain/activity-metrics";
+import { YearlyMileageChart } from "../../components/dashboard/yearly-mileage-chart";
+import { monthlyMileage, trendWindowStart, weeklyElevation, weeklyMileage, weeklyPaceTrend, yearlyMileage } from "../../domain/activity-metrics";
 import { activityTypeLabel, distanceUnitForType, distinctActivityTypes, filterByActivityType } from "../../domain/activity-types";
 import { activityRepository } from "../../repositories/activity-repository";
 
@@ -42,9 +43,11 @@ async function FitnessContent({ searchParams }: { searchParams: Promise<Record<s
 
   const now = new Date();
   // ~6-month window covers the weekly + monthly charts; history is a separate capped query.
-  const [activities, recent] = await Promise.all([
+  // The yearly chart uses all-time data so each calendar year totals completely (the trend window would leave years partial).
+  const [activities, recent, allTime] = await Promise.all([
     activityRepository.findSince(trendWindowStart(now), now),
     activityRepository.findRecent(50),
+    activityRepository.findSince(null, now),
   ]);
 
   // Dropdown options come from the full dataset so every type stays selectable.
@@ -55,6 +58,7 @@ async function FitnessContent({ searchParams }: { searchParams: Promise<Record<s
 
   // Charts reflect only the selected type; rowing is shown in meters, others in miles.
   const filtered = filterByActivityType(activities, type);
+  const yearlyFiltered = filterByActivityType(allTime, type);
   const unit = distanceUnitForType(type);
 
   return (
@@ -65,6 +69,9 @@ async function FitnessContent({ searchParams }: { searchParams: Promise<Record<s
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
         <WeeklyMileageChart data={weeklyMileage(filtered, unit)} unit={unit} />
         <MonthlyMileageChart data={monthlyMileage(filtered, unit)} unit={unit} />
+        <div className="lg:col-span-2">
+          <YearlyMileageChart data={yearlyMileage(yearlyFiltered, unit)} unit={unit} />
+        </div>
         <PaceTrendChart data={weeklyPaceTrend(filtered)} />
         <ElevationTrendChart data={weeklyElevation(filtered)} />
       </div>
